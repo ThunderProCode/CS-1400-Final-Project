@@ -25,31 +25,37 @@ namespace GameClient
             bool GameState = true;
             while(GameState)
             {
-                // Send message to server
-                Console.Write("Client: ");
-                string row = GetInput("Type the number of the row in which you want to place: ");
-                string col = GetInput("Type the number of the column in which you want to place: ");
-                System.Console.WriteLine($"You are placing in row:{row} column:{col}");
-                byte[] rowData = Encoding.ASCII.GetBytes(row);
-                byte[] colData = Encoding.ASCII.GetBytes(col);
-                stream.Write(rowData, 0, rowData.Length);
-                stream.Write(colData,0,colData.Length);
-
                 // Receive response from server
                 byte[] buffer = new byte[1024];
                 int bytesRead = stream.Read(buffer, 0, buffer.Length);
                 string data = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-                GameData? gameData = JsonSerializer.Deserialize<GameData>(data);
 
-                if(gameData != null){
-                    if(gameData.GetGameState()){
-                        if(gameData.GetValidPreviousMovement()){
-                            PrintBoard(gameData.GetGameBoard());
-                        }else {
-                            System.Console.WriteLine("That was not a valid movement!");
-                            continue;
-                        }     
-                    } else {
+                if(data != null && data.Length > 0){
+                    GameData? gameData = JsonSerializer.Deserialize<GameData>(data);
+                    if(gameData != null) {
+                        PrintBoard(gameData.GetGameBoard());
+                        if(gameData.GetTurn() == 2){
+                            // Ask user to input the coordinates to place their character
+                            string row = GetInput("Type the number of the row in which you want to place: ");
+                            string col = GetInput("Type the number of the column in which you want to place: ");
+                            System.Console.WriteLine($"You are placing in row:{row} column:{col}");
+                            // Send message to server
+                            byte[] rowData = Encoding.ASCII.GetBytes(row);
+                            byte[] colData = Encoding.ASCII.GetBytes(col);
+                            stream.Write(rowData, 0, rowData.Length);
+                            stream.Write(colData,0,colData.Length);
+
+                            if(gameData.GetGameState()){
+                                if(gameData.GetValidPreviousMovement()){
+                                    PrintBoard(gameData.GetGameBoard());
+                                }else {
+                                    System.Console.WriteLine("That was not a valid movement!");
+                                    continue;
+                                }     
+                            } else {
+                                GameState = gameData.GetGameState();
+                            }
+                        }
                         GameState = gameData.GetGameState();
                     }
                 }
@@ -60,9 +66,8 @@ namespace GameClient
             client.Close();
         }
         
-
+        // Ask user to input coords and validate them
         private static string GetInput(string message){
-
             System.Console.Write(message);
             string? input = Console.ReadLine();
 

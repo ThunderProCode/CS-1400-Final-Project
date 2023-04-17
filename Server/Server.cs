@@ -26,40 +26,82 @@ namespace GameServer
 
             // Get a network stream object for reading and writing data
             NetworkStream stream = client.GetStream();
+            
+            // gameData is the data being sent to the client
+            GameData gameData = new GameData(false,game.GetState(),game.GetBoard(),game.getTurn());
 
-            // Create a new Game
+            // Serialize the GameData to JSON
+            var currentJson = JsonSerializer.Serialize(gameData);
+
+            // Send the initial GameData to Client
+            byte[] currentBytes = Encoding.ASCII.GetBytes(currentJson);
+            stream.Write(currentBytes,0,currentBytes.Length);
+
+            // While the game is running (No one won)
             while(game.GetState())
             {
-                // Receive coords from player2
-                byte[] buffer = new byte[1024];
-                int rowBytes = stream.Read(buffer,0,buffer.Length);
-                string row = Encoding.ASCII.GetString(buffer,0,rowBytes);
-                int colBytes = stream.Read(buffer,0,buffer.Length);
-                string col = Encoding.ASCII.GetString(buffer,0,colBytes);
-                
-                // Parse coordinates to int[]
-                int[] coordinates = ParseCoords(row,col);
-                GameData gameData = new GameData(false,game.GetState(),game.GetBoard());
+                // If it his the turn of the player 2, the client moves first
+                if(game.getTurn() == 2){
+                    // Receive coords from player2
+                    byte[] buffer = new byte[1024];
+                    int rowBytes = stream.Read(buffer,0,buffer.Length);
+                    string row = Encoding.ASCII.GetString(buffer,0,rowBytes);
+                    int colBytes = stream.Read(buffer,0,buffer.Length);
+                    string col = Encoding.ASCII.GetString(buffer,0,colBytes);
 
-                // try to make a movement in the board
-                if(game.IsMoveValid(coordinates)){
-                    game.Move(coordinates,'X');
-                    game.Print();
-                    if(game.IsWin()){
-                        game.SetState(false);
+                    // Parse coordinates to int[]
+                    int[] coordinates = ParseCoords(row,col);
+
+                    // try to make a movement in the board
+                    if(game.GetState()){
+                        if(game.IsMoveValid(coordinates)){
+                            game.Move(coordinates,'X');
+                            game.Print();
+                            if(game.IsWin()){
+                                game.SetState(false);
+                            }
+                            game.setTurn(1);
+                            gameData = new GameData(true,game.GetState(),game.GetBoard(),game.getTurn());
+                        }
                     }
-                    gameData = new GameData(true,game.GetState(),game.GetBoard());
+                    // Serialize the GameData to JSON
+                    var json = JsonSerializer.Serialize(gameData);
+
+                    // Send GameData to Client
+                    byte[] bytes = Encoding.ASCII.GetBytes(json);
+                    stream.Write(bytes,0,bytes.Length);
+                    
+                // If the turn is 1 the server moves first
+                } else {
+
+                    // Ask user to input coordinates
+                    string localRow = GetInput("Type the number of the row in which you want to place: ");
+                    string localCol = GetInput("Type the number of the column in which you want to place: ");
+                    // Parse coordinates to int[]
+                    int[] coordinates = ParseCoords(localRow,localCol);
+                    // try to make a movement in the board
+                    if(game.GetState()){
+                        if(game.IsMoveValid(coordinates)){
+                            game.Move(coordinates,'O');
+                            game.Print();
+                            if(game.IsWin()){
+                                game.SetState(false);
+                            }
+                            game.setTurn(2);
+                            gameData = new GameData(true,game.GetState(),game.GetBoard(),game.getTurn());
+                        }
+                    }
+                    // Serialize the GameData to JSON
+                    var json = JsonSerializer.Serialize(gameData);
+
+                    // Send GameData to Client
+                    byte[] bytes = Encoding.ASCII.GetBytes(json);
+                    stream.Write(bytes,0,bytes.Length);
                 }
-
-                // Serialize the GameData to JSON
-                var json = JsonSerializer.Serialize(gameData);
-
-                // Send GameData to Client
-                byte[] bytes = Encoding.ASCII.GetBytes(json);
-                stream.Write(bytes,0,bytes.Length);
-
+                
             }
             System.Console.WriteLine("Someone Won - Game Finished");
+
             // Close the network stream and client connection
             stream.Close();
             client.Close();
@@ -77,6 +119,36 @@ namespace GameServer
             coordinates[0] = Convert.ToInt32(row);
             coordinates[1] = Convert.ToInt32(col);
             return coordinates;
+        }
+        // Ask user to input coordinates and validate them
+        private static string GetInput(string message){
+            System.Console.Write(message);
+            string? input = Console.ReadLine();
+
+            // Validate the user input
+            bool correctInput = false;
+            while(input == null || correctInput == false){
+                if(input != null){
+                    if(Int32.TryParse(input,out int rowNum))
+                    {
+                        if(rowNum < 0 || rowNum > 2)
+                        {
+                            System.Console.WriteLine("Please type a number between 0 and 2");
+                            input = Console.ReadLine();
+                        } else 
+                        {
+                            correctInput = true;
+                        } 
+                    }else {
+                        System.Console.WriteLine("Please type a number between 0 and 2");
+                        input = Console.ReadLine();
+                    }            
+                } else {
+                    System.Console.WriteLine("Please type number common!: ");
+                    input = Console.ReadLine();
+                }
+            }
+            return input;
         }
     }
 }

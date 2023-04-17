@@ -15,11 +15,21 @@ namespace GameServer
         private bool state = false;
         public Game(char player1,char player2)
         {
+            Random rnd = new Random();
             this.player1 = player1;
             this.player2 = player2;
             this.state = true;
+            this.turn = rnd.Next(1,3);
+            System.Console.WriteLine(this.turn);
         }
-
+        // Get the current player turn
+        public int getTurn(){
+            return this.turn;
+        }
+        // Set the current player turn
+        public void setTurn(int newTurn){
+            this.turn = newTurn;
+        }
         // Get the board contents 
         public char[][] GetBoard()
         {
