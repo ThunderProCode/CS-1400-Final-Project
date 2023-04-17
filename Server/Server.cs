@@ -1,4 +1,5 @@
 ﻿// Server
+using System.Text.Json;
 using System.Net.Sockets;
 using System.Net;
 using System.Text;
@@ -29,8 +30,6 @@ namespace GameServer
             // Create a new Game
             while(game.GetState())
             {
-                // game.Print();
-
                 // Receive coords from player2
                 byte[] buffer = new byte[1024];
                 int rowBytes = stream.Read(buffer,0,buffer.Length);
@@ -40,21 +39,22 @@ namespace GameServer
                 
                 // Parse coordinates to int[]
                 int[] coordinates = ParseCoords(row,col);
-                
-                // try to make a movement in the board
-                if(game.Move(coordinates,'X'))
-                {
-                    game.Print();
-                } else 
-                {
+                 GameData gameData = new GameData(false,game.GetState(),game.GetBoard());
 
+                // try to make a movement in the board
+                if(game.IsMoveValid(coordinates)){
+                    game.Move(coordinates,'X');
+                    game.Print();
+                    gameData = new GameData(true,game.GetState(),game.GetBoard());
                 }
 
+                // Serialize the GameData to JSON
+                var json = JsonSerializer.Serialize(gameData);
 
-                // Send response back to client
-                // char[,] boardState = game.GetBoard();
-                // byte[] data = Encoding.ASCII.GetBytes(boardState);
-                // stream.Write(data, 0, data.Length);
+                // Send GameData to Client
+                byte[] bytes = Encoding.ASCII.GetBytes(json);
+                stream.Write(bytes,0,bytes.Length);
+
             }
 
             // Close the network stream and client connection
@@ -64,6 +64,8 @@ namespace GameServer
             // Stop listening for incoming connections
             listener.Stop();
         }
+
+        // Parse and returns coordinates in string format to int[]
         private static int[] ParseCoords(string row,string col)
         {
             int[] coordinates = new int[2];

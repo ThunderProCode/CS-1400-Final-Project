@@ -2,11 +2,11 @@ namespace GameServer
 {
     class Game
     {
-        private char[,] board = new char[3, 3]
+        private char[][] board = new char[3][]
         {
-            { ' ', ' ', ' ' },
-            { ' ', ' ', ' ' },
-            { ' ', ' ', ' ' }
+            new char[]{ ' ', ' ', ' ' },
+            new char[]{ ' ', ' ', ' ' },
+            new char[]{ ' ', ' ', ' ' }
         };
         private char player1;
         private char player2;
@@ -21,12 +21,12 @@ namespace GameServer
         }
 
         // Get the board contents 
-        public char[,] GetBoard()
+        public char[][] GetBoard()
         {
             return this.board;
         }
 
-        public void SetBoard(char[,] newBoard)
+        public void SetBoard(char[][] newBoard)
         {
             this.board = newBoard;
         }
@@ -57,7 +57,7 @@ namespace GameServer
                 Console.Write($"{row} │");
                 for (int col = 0; col < 3; col++)
                 {
-                    System.Console.Write($"{this.board[row,col]}  |");
+                    System.Console.Write($"{this.board[row][col]}  |");
                 }
                 System.Console.WriteLine();
                 if(row != 2)
@@ -69,19 +69,16 @@ namespace GameServer
         }
     
         // Receive user movement coordinates and place on board
-        public bool Move(int[] position,char player){
-            if(IsMoveValid(position)){
-                this.board[position[0],position[1]] = player;
-                return true;
-            }
-            return false;
+        // Make sure to validate coordinates with IsMoveValid() before calling Move()
+        public void Move(int[] position,char player){
+            this.board[position[0]][position[1]] = player;
         }
 
         // Validate that the user movement is valid
         public bool IsMoveValid(int[] position){
             if(position[0] < 0 || position[0] > 2 || position[1] < 0 || position[1] > 2)
             {
-                if((board[position[0],position[1]] == player1) || (board[position[0],position[1]] == player2))
+                if((board[position[0]][position[1]] == player1) || (board[position[0]][position[1]] == player2))
                 {
                     return false;
                 }
