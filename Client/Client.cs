@@ -19,12 +19,12 @@ while(true)
 {
      // Send message to server
     Console.Write("Client: ");
-    string? message = Console.ReadLine();
-    while(message == null){
-        message = Console.ReadLine();
-    }
-    byte[] data = Encoding.ASCII.GetBytes(message);
-    stream.Write(data, 0, data.Length);
+    string row = GetInput("Type the number of the row to which you want to move: ");
+    string col = GetInput("Type the number of the column to which you want to move: ");
+    byte[] rowData = Encoding.ASCII.GetBytes(row);
+    byte[] colData = Encoding.ASCII.GetBytes(col);
+    stream.Write(rowData, 0, rowData.Length);
+    stream.Write(colData,0,colData.Length);
 
     // Receive response from server
     byte[] buffer = new byte[1024];
@@ -35,3 +35,48 @@ while(true)
 
 stream.Close();
 client.Close();
+
+string GetInput(string message){
+    System.Console.Write(message);
+    string? input = Console.ReadLine();
+    while(input == null || input.Length == 0){
+        input = Console.ReadLine();
+        if(Int32.TryParse(input,out int rowNum))
+        {
+            if(rowNum < 0 || rowNum > 2)
+            {
+                System.Console.WriteLine("Please type a number between 0 and 2");
+                input = null;
+            } 
+        }else {
+            System.Console.WriteLine("Please type a number");
+            input = null;
+        }            
+    }
+    return input;
+}
+
+// prints the board
+void PrintBoard(char[,] board)
+{
+    System.Console.WriteLine();
+    System.Console.WriteLine(" --TIC-TAC-TOE--");
+    System.Console.WriteLine();
+    System.Console.WriteLine("   0    1   2");
+    Console.WriteLine("  ┌───┬───┬───┐");
+    for (int row = 0; row < 3; row++)
+    {
+
+        Console.Write($"{row} │");
+        for (int col = 0; col < 3; col++)
+        {
+            System.Console.Write($"{board[row,col]}  |");
+        }
+        System.Console.WriteLine();
+        if(row != 2)
+        {
+            System.Console.WriteLine("  ├───┼───┼───┤");
+        }
+    }
+    Console.WriteLine("  └───┴───┴───┘");
+}
