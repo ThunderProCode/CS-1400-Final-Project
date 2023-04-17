@@ -45,6 +45,9 @@ namespace GameServer
                 if(game.IsMoveValid(coordinates)){
                     game.Move(coordinates,'X');
                     game.Print();
+                    if(game.IsWin()){
+                        game.SetState(false);
+                    }
                     gameData = new GameData(true,game.GetState(),game.GetBoard());
                 }
 
@@ -56,7 +59,7 @@ namespace GameServer
                 stream.Write(bytes,0,bytes.Length);
 
             }
-
+            System.Console.WriteLine("Someone Won - Game Finished");
             // Close the network stream and client connection
             stream.Close();
             client.Close();

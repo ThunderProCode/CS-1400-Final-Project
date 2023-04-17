@@ -43,6 +43,30 @@ namespace GameServer
             this.state = NewState;
         }
 
+        // check if a player won the game
+        public bool IsWin(){
+            // check if there is a horizontal win
+            for (int row = 0; row < 3; row++)
+            {
+                if(this.board[row][0] == player1 && this.board[row][1] == player1 && this.board[row][2] == player1) return true;
+                if(this.board[row][0] == player2 && this.board[row][1] == player2 && this.board[row][2] == player2) return true;
+            }
+            // check if there is a vertical win
+            for (int col = 0; col < 3; col++)
+            {
+                if(this.board[0][col] == player1 && this.board[1][col] == player1 && this.board[2][col] == player1) return true;
+                if(this.board[0][col] == player2 && this.board[1][col] == player2 && this.board[2][col] == player2) return true;
+            }
+            // check if there is a diagonal right win
+            if(this.board[0][0] == player1 && this.board[1][1] == player1 && this.board[2][2] == player1)return true;
+            if(this.board[0][0] == player2 && this.board[1][1] == player2 && this.board[2][2] == player2)return true;
+            // check if there is a diagonal left win
+            if(this.board[0][2] == player1 && this.board[1][1] == player1 && this.board[2][0] == player1)return true;
+            if(this.board[0][2] == player2 && this.board[1][1] == player2 && this.board[2][0] == player2)return true;
+
+            return false;            
+        }
+
         // Print the current state of the board
         public void Print()
         {

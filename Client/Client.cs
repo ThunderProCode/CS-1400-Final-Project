@@ -21,8 +21,9 @@ namespace GameClient
 
             // Get a network stream object for reading and writing data
             NetworkStream stream = client.GetStream();
-
-            while(true)
+            
+            bool GameState = true;
+            while(GameState)
             {
                 // Send message to server
                 Console.Write("Client: ");
@@ -48,11 +49,13 @@ namespace GameClient
                             System.Console.WriteLine("That was not a valid movement!");
                             continue;
                         }     
+                    } else {
+                        GameState = gameData.GetGameState();
                     }
                 }
 
             }
-
+            System.Console.WriteLine("Someone Won - Game Finished");
             stream.Close();
             client.Close();
         }
