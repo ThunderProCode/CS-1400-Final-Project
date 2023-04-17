@@ -76,13 +76,8 @@ namespace GameServer
 
         // Validate that the user movement is valid
         public bool IsMoveValid(int[] position){
-            if(position[0] < 0 || position[0] > 2 || position[1] < 0 || position[1] > 2)
-            {
-                if((board[position[0]][position[1]] == player1) || (board[position[0]][position[1]] == player2))
-                {
-                    return false;
-                }
-            }
+            if(position[0] < 0 || position[0] > 2 || position[1] < 0 || position[1] > 2) return false;
+            if(board[position[0]][position[1]] == player1 || board[position[0]][position[1]] == player2 ) return false;
             return true;
         }
 

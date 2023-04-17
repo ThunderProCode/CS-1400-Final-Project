@@ -39,7 +39,7 @@ namespace GameServer
                 
                 // Parse coordinates to int[]
                 int[] coordinates = ParseCoords(row,col);
-                 GameData gameData = new GameData(false,game.GetState(),game.GetBoard());
+                GameData gameData = new GameData(false,game.GetState(),game.GetBoard());
 
                 // try to make a movement in the board
                 if(game.IsMoveValid(coordinates)){
