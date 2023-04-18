@@ -8,7 +8,9 @@ namespace GameServer
     class Server 
     {
         static void Main(string[] args){
+
             Game game = new Game('X','O');
+            game.Print();
 
             // Set the IP Address and port number 
             IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
@@ -28,7 +30,7 @@ namespace GameServer
             NetworkStream stream = client.GetStream();
             
             // gameData is the data being sent to the client
-            GameData gameData = new GameData(false,game.GetState(),game.GetBoard(),game.getTurn());
+            GameData gameData = new GameData(true,game.GetState(),game.GetBoard(),game.getTurn());
 
             // Serialize the GameData to JSON
             var currentJson = JsonSerializer.Serialize(gameData);
@@ -40,65 +42,68 @@ namespace GameServer
             // While the game is running (No one won)
             while(game.GetState())
             {
+                int[] coordinates;
+                char player;
                 // If it his the turn of the player 2, the client moves first
                 if(game.getTurn() == 2){
+                    // Change the current player
+                    player = 'X';
                     // Receive coords from player2
                     byte[] buffer = new byte[1024];
                     int rowBytes = stream.Read(buffer,0,buffer.Length);
-                    string row = Encoding.ASCII.GetString(buffer,0,rowBytes);
+                    string clientRow = Encoding.ASCII.GetString(buffer,0,rowBytes);
                     int colBytes = stream.Read(buffer,0,buffer.Length);
-                    string col = Encoding.ASCII.GetString(buffer,0,colBytes);
+                    string clientCol = Encoding.ASCII.GetString(buffer,0,colBytes);
 
                     // Parse coordinates to int[]
-                    int[] coordinates = ParseCoords(row,col);
-
-                    // try to make a movement in the board
-                    if(game.GetState()){
-                        if(game.IsMoveValid(coordinates)){
-                            game.Move(coordinates,'X');
-                            game.Print();
-                            if(game.IsWin()){
-                                game.SetState(false);
-                            }
-                            game.setTurn(1);
-                            gameData = new GameData(true,game.GetState(),game.GetBoard(),game.getTurn());
-                        }
+                    coordinates = ParseCoords(clientRow,clientCol);
+                    if(!game.IsMoveValid(coordinates)){
+                        gameData = new GameData(false,game.GetState(),game.GetBoard(),game.getTurn());
+                    } else {
+                        game.setTurn(1);
+                        gameData = new GameData(true,game.GetState(),game.GetBoard(),game.getTurn());
                     }
-                    // Serialize the GameData to JSON
-                    var json = JsonSerializer.Serialize(gameData);
-
-                    // Send GameData to Client
-                    byte[] bytes = Encoding.ASCII.GetBytes(json);
-                    stream.Write(bytes,0,bytes.Length);
-                    
+                
                 // If the turn is 1 the server moves first
                 } else {
+                    // Change the current player
+                    player = 'O';
 
                     // Ask user to input coordinates
                     string localRow = GetInput("Type the number of the row in which you want to place: ");
                     string localCol = GetInput("Type the number of the column in which you want to place: ");
+
                     // Parse coordinates to int[]
-                    int[] coordinates = ParseCoords(localRow,localCol);
-                    // try to make a movement in the board
+                    coordinates = ParseCoords(localRow,localCol);
+
+                    if(!(game.IsMoveValid(coordinates))){
+                        System.Console.WriteLine("That was not a valid movement!");   
+                    } else {
+                        game.setTurn(2);
+                    }
+                }
+
+                // try to make a movement in the board
                     if(game.GetState()){
                         if(game.IsMoveValid(coordinates)){
-                            game.Move(coordinates,'O');
+                            game.Move(coordinates,player);
+                            Console.Clear();
                             game.Print();
                             if(game.IsWin()){
                                 game.SetState(false);
                             }
-                            game.setTurn(2);
                             gameData = new GameData(true,game.GetState(),game.GetBoard(),game.getTurn());
                         }
                     }
+
                     // Serialize the GameData to JSON
                     var json = JsonSerializer.Serialize(gameData);
 
                     // Send GameData to Client
                     byte[] bytes = Encoding.ASCII.GetBytes(json);
                     stream.Write(bytes,0,bytes.Length);
-                }
-                
+
+                    System.Console.WriteLine("Waiting for player 2 to make a move.....");
             }
             System.Console.WriteLine("Someone Won - Game Finished");
 
@@ -120,6 +125,7 @@ namespace GameServer
             coordinates[1] = Convert.ToInt32(col);
             return coordinates;
         }
+
         // Ask user to input coordinates and validate them
         private static string GetInput(string message){
             System.Console.Write(message);

@@ -39,14 +39,18 @@ namespace GameClient
                             string row = GetInput("Type the number of the row in which you want to place: ");
                             string col = GetInput("Type the number of the column in which you want to place: ");
                             System.Console.WriteLine($"You are placing in row:{row} column:{col}");
+
                             // Send message to server
                             byte[] rowData = Encoding.ASCII.GetBytes(row);
                             byte[] colData = Encoding.ASCII.GetBytes(col);
                             stream.Write(rowData, 0, rowData.Length);
                             stream.Write(colData,0,colData.Length);
 
+                            System.Console.WriteLine("Waiting for player 1 to make a move....");
+
                             if(gameData.GetGameState()){
                                 if(gameData.GetValidPreviousMovement()){
+                                    Console.Clear();
                                     PrintBoard(gameData.GetGameBoard());
                                 }else {
                                     System.Console.WriteLine("That was not a valid movement!");
