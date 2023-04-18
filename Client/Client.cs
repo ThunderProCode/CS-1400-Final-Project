@@ -14,60 +14,72 @@ namespace GameClient
             IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
             int port = 8080;
 
-            // Create a TCP/IP socket for the client
-            TcpClient client = new TcpClient();
-            client.Connect(ipAddress,port);
-            System.Console.WriteLine("Connected to server.");
-
-            // Get a network stream object for reading and writing data
-            NetworkStream stream = client.GetStream();
-            
-            bool GameState = true;
-            while(GameState)
+            try
             {
-                // Receive response from server
-                byte[] buffer = new byte[1024];
-                int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                string data = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                // Create a TCP/IP socket for the client
+                TcpClient client = new TcpClient();
+                client.Connect(ipAddress,port);
+                System.Console.WriteLine("Connected to server.");
 
-                if(data != null && data.Length > 0){
-                    GameData? gameData = JsonSerializer.Deserialize<GameData>(data);
-                    if(gameData != null) {
-                        PrintBoard(gameData.GetGameBoard());
-                        if(gameData.GetTurn() == 2){
-                            // Ask user to input the coordinates to place their character
-                            string row = GetInput("Type the number of the row in which you want to place: ");
-                            string col = GetInput("Type the number of the column in which you want to place: ");
-                            System.Console.WriteLine($"You are placing in row:{row} column:{col}");
+                // Get a network stream object for reading and writing data
+                NetworkStream stream = client.GetStream();
+                
+                bool GameState = true;
+                while(GameState)
+                {
+                    // Receive response from server
+                    byte[] buffer = new byte[1024];
+                    int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                    string data = Encoding.ASCII.GetString(buffer, 0, bytesRead);
 
-                            // Send message to server
-                            byte[] rowData = Encoding.ASCII.GetBytes(row);
-                            byte[] colData = Encoding.ASCII.GetBytes(col);
-                            stream.Write(rowData, 0, rowData.Length);
-                            stream.Write(colData,0,colData.Length);
+                    if(data != null && data.Length > 0){
+                        GameData? gameData = JsonSerializer.Deserialize<GameData>(data);
+                        if(gameData != null) {
+                            Console.Clear();
+                            PrintBoard(gameData.GetGameBoard());
+                            if(gameData.GetTurn() == 2){
+                                // Ask user to input the coordinates to place their character
+                                string row = GetInput("Type the number of the row in which you want to place: ");
+                                string col = GetInput("Type the number of the column in which you want to place: ");
+                                System.Console.WriteLine($"\nYou are placing in row:{row} column:{col}");
 
-                            System.Console.WriteLine("Waiting for player 1 to make a move....");
+                                // Send message to server
+                                byte[] rowData = Encoding.ASCII.GetBytes(row);
+                                byte[] colData = Encoding.ASCII.GetBytes(col);
+                                stream.Write(rowData, 0, rowData.Length);
+                                stream.Write(colData,0,colData.Length);
 
-                            if(gameData.GetGameState()){
-                                if(gameData.GetValidPreviousMovement()){
-                                    Console.Clear();
-                                    PrintBoard(gameData.GetGameBoard());
-                                }else {
-                                    System.Console.WriteLine("That was not a valid movement!");
-                                    continue;
-                                }     
-                            } else {
-                                GameState = gameData.GetGameState();
+                                System.Console.WriteLine("Waiting for player 1 to make a move....");
+
+                                if(gameData.GetGameState()){
+                                    if(gameData.GetValidPreviousMovement()){
+                                        Console.Clear();
+                                        PrintBoard(gameData.GetGameBoard());
+                                    }else {
+                                        System.Console.WriteLine("That was not a valid movement!");
+                                        continue;
+                                    }     
+                                } else {
+                                    GameState = gameData.GetGameState();
+                                }
                             }
+                            GameState = gameData.GetGameState();
                         }
-                        GameState = gameData.GetGameState();
                     }
-                }
 
+                }
+                System.Console.WriteLine("Someone Won - Game Finished");
+                stream.Close();
+                client.Close();
             }
-            System.Console.WriteLine("Someone Won - Game Finished");
-            stream.Close();
-            client.Close();
+            catch (SocketException)
+            {
+                System.Console.WriteLine("Make sure the server is running before you run the client");
+            }
+            catch (IOException)
+            {
+                System.Console.WriteLine("Player 1 disconnected, He was afraid of you!");
+            }
         }
         
         // Ask user to input coords and validate them
