@@ -91,6 +91,7 @@ namespace GameServer
                                 game.Move(coordinates,player);
                                 Console.Clear();
                                 game.Print();
+                                if(game.getTurn() == 2) System.Console.WriteLine("Waiting for player 2 to make a move.....");
                                 if(game.IsWin()){
                                     game.SetState(false);
                                 }
@@ -104,8 +105,7 @@ namespace GameServer
                         // Send GameData to Client
                         byte[] bytes = Encoding.ASCII.GetBytes(json);
                         stream.Write(bytes,0,bytes.Length);
-
-                        System.Console.WriteLine("Waiting for player 2 to make a move.....");
+                        
                 }
                 System.Console.WriteLine("Someone Won - Game Finished");
 

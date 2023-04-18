@@ -49,13 +49,8 @@ namespace GameClient
                                 stream.Write(rowData, 0, rowData.Length);
                                 stream.Write(colData,0,colData.Length);
 
-                                System.Console.WriteLine("Waiting for player 1 to make a move....");
-
                                 if(gameData.GetGameState()){
-                                    if(gameData.GetValidPreviousMovement()){
-                                        Console.Clear();
-                                        PrintBoard(gameData.GetGameBoard());
-                                    }else {
+                                    if(!gameData.GetValidPreviousMovement()){
                                         System.Console.WriteLine("That was not a valid movement!");
                                         continue;
                                     }     
@@ -63,6 +58,7 @@ namespace GameClient
                                     GameState = gameData.GetGameState();
                                 }
                             }
+                            System.Console.WriteLine("Waiting for player 1 to make a move....");
                             GameState = gameData.GetGameState();
                         }
                     }
