@@ -9,9 +9,6 @@ namespace GameServer
     {
         static void Main(string[] args){
 
-            Game game = new Game('X','O');
-            game.Print();
-
             // Set the IP Address and port number 
             IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
             int port = 8080;
@@ -21,18 +18,22 @@ namespace GameServer
             listener.Start();
 
             System.Console.WriteLine($"Server started on {ipAddress}:{port}");
+
+            Game game = new Game('X','O');
+            PrintInstructions();
+            game.Print();
             
             try
             {
                  // Accept incoming client connections
                 TcpClient client = listener.AcceptTcpClient();
-                System.Console.WriteLine("Client Connected.");
+                System.Console.WriteLine("Player 2 Connected.");
 
                 // Get a network stream object for reading and writing data
                 NetworkStream stream = client.GetStream();
                 
                 // gameData is the data being sent to the client
-                GameData gameData = new GameData(true,game.GetState(),game.GetBoard(),game.getTurn());
+                GameData gameData = new GameData(true,game.GetState(),game.isFull(),game.GetBoard(),game.getTurn());
 
                 // Serialize the GameData to JSON
                 var currentJson = JsonSerializer.Serialize(gameData);
@@ -60,10 +61,10 @@ namespace GameServer
                         // Parse coordinates to int[]
                         coordinates = ParseCoords(clientRow,clientCol);
                         if(!game.IsMoveValid(coordinates)){
-                            gameData = new GameData(false,game.GetState(),game.GetBoard(),game.getTurn());
+                            gameData = new GameData(false,game.GetState(),game.isFull(),game.GetBoard(),game.getTurn());
                         } else {
                             game.setTurn(1);
-                            gameData = new GameData(true,game.GetState(),game.GetBoard(),game.getTurn());
+                            gameData = new GameData(true,game.GetState(),game.isFull(),game.GetBoard(),game.getTurn());
                         }
                     
                     // If the turn is 1 the server moves first
@@ -90,12 +91,20 @@ namespace GameServer
                             if(game.IsMoveValid(coordinates)){
                                 game.Move(coordinates,player);
                                 Console.Clear();
+                                PrintInstructions();
                                 game.Print();
+                                System.Console.WriteLine();
                                 if(game.getTurn() == 2) System.Console.WriteLine("Waiting for player 2 to make a move.....");
-                                if(game.IsWin()){
+                                if(!game.isFull()){
+                                    if(game.IsWin()){
+                                        game.SetState(false);
+                                    }
+                                    gameData = new GameData(true,game.GetState(),game.isFull(),game.GetBoard(),game.getTurn());
+                                } else
+                                {
                                     game.SetState(false);
+                                    gameData = new GameData(true,game.GetState(),game.isFull(),game.GetBoard(),game.getTurn());
                                 }
-                                gameData = new GameData(true,game.GetState(),game.GetBoard(),game.getTurn());
                             }
                         }
 
@@ -107,7 +116,14 @@ namespace GameServer
                         stream.Write(bytes,0,bytes.Length);
                         
                 }
-                System.Console.WriteLine("Someone Won - Game Finished");
+
+                if(game.isFull()){
+                    System.Console.WriteLine("Its a draw! No one won");
+                } else
+                {
+                    string winner = game.getTurn() == 1 ? "Player 2" : "Player 1";
+                    System.Console.WriteLine($"{winner} won - Game Finished");
+                }
 
                 // Close the network stream and client connection
                 stream.Close();
@@ -163,6 +179,11 @@ namespace GameServer
                 }
             }
             return input;
+        }
+        // Prints the game instructions
+        private static void PrintInstructions()
+        {
+            System.Console.WriteLine("Instructions:\n1- Type the number of the row in which you want to place\n2- Type the number of the column in which you want to place\n3- If your movement was not valid, you will have to type the inputs again until you make a valid movement.\nGoodluck!\n");
         }
     }
 }

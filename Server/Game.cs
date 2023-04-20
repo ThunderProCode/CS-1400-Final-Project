@@ -20,7 +20,6 @@ namespace GameServer
             this.player2 = player2;
             this.state = true;
             this.turn = rnd.Next(1,3);
-            System.Console.WriteLine(this.turn);
         }
         // Get the current player turn
         public int getTurn(){
@@ -51,6 +50,20 @@ namespace GameServer
         public void SetState(bool NewState)
         {
             this.state = NewState;
+        }
+
+        // Returns true if all the spaces on the board are filled
+        public bool isFull(){
+            for (int row = 0; row < 3; row++)
+            {
+                for (int col = 0; col < 3; col++)
+                {
+                    if(this.board[row][col] == ' '){
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
 
         // check if a player won the game

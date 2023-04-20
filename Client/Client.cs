@@ -13,7 +13,8 @@ namespace GameClient
             // Set the IP address and port number for the server
             IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
             int port = 8080;
-
+            bool isWinner = true;
+            int playerTurn = 1;
             try
             {
                 // Create a TCP/IP socket for the client
@@ -36,27 +37,40 @@ namespace GameClient
                         GameData? gameData = JsonSerializer.Deserialize<GameData>(data);
                         if(gameData != null) {
                             Console.Clear();
+                            PrintInstructions();
                             PrintBoard(gameData.GetGameBoard());
-                            if(gameData.GetTurn() == 2){
-                                // Ask user to input the coordinates to place their character
-                                string row = GetInput("Type the number of the row in which you want to place: ");
-                                string col = GetInput("Type the number of the column in which you want to place: ");
-                                System.Console.WriteLine($"\nYou are placing in row:{row} column:{col}");
+                            System.Console.WriteLine();
+                            if(!gameData.GetIsFull())
+                            {
+                                if(gameData.GetGameState())
+                                {
+                                    if(gameData.GetTurn() == 2){
+                                        playerTurn = 2;
+                                        // Ask user to input the coordinates to place their character
+                                        string row = GetInput("Type the number of the row in which you want to place: ");
+                                        string col = GetInput("Type the number of the column in which you want to place: ");
+                                        System.Console.WriteLine($"\nYou are placing in row:{row} column:{col}");
 
-                                // Send message to server
-                                byte[] rowData = Encoding.ASCII.GetBytes(row);
-                                byte[] colData = Encoding.ASCII.GetBytes(col);
-                                stream.Write(rowData, 0, rowData.Length);
-                                stream.Write(colData,0,colData.Length);
+                                        // Send message to server
+                                        byte[] rowData = Encoding.ASCII.GetBytes(row);
+                                        byte[] colData = Encoding.ASCII.GetBytes(col);
+                                        stream.Write(rowData, 0, rowData.Length);
+                                        stream.Write(colData,0,colData.Length);
 
-                                if(gameData.GetGameState()){
-                                    if(!gameData.GetValidPreviousMovement()){
-                                        System.Console.WriteLine("That was not a valid movement!");
-                                        continue;
-                                    }     
-                                } else {
-                                    GameState = gameData.GetGameState();
-                                }
+                                        // Repeat until user inputs a valid movement
+                                        if(!gameData.GetValidPreviousMovement()){
+                                            System.Console.WriteLine("That was not a valid movement!");
+                                            continue;
+                                        }     
+                                    } else 
+                                    {
+                                        playerTurn = 1;
+                                    }
+                                } 
+                            } else 
+                            {
+                                isWinner = false;
+                                GameState = gameData.GetGameState();
                             }
                             System.Console.WriteLine("Waiting for player 1 to make a move....");
                             GameState = gameData.GetGameState();
@@ -64,7 +78,13 @@ namespace GameClient
                     }
 
                 }
-                System.Console.WriteLine("Someone Won - Game Finished");
+                if(isWinner){
+                    string winner = playerTurn == 1 ? "Player 1" : "Player 2";
+                    System.Console.WriteLine($"{winner} Won - Game Finished");
+                } else 
+                {
+                    System.Console.WriteLine("Its a draw, No one won");
+                }
                 stream.Close();
                 client.Close();
             }
@@ -107,6 +127,12 @@ namespace GameClient
                 }
             }
             return input;
+        }
+
+        // Prints the game instructions
+        private static void PrintInstructions()
+        {
+            System.Console.WriteLine("Instructions:\n1- Type the number of the row in which you want to place\n2- Type the number of the column in which you want to place\n3- If your movement was not valid, you will have to type the inputs again until you make a valid movement.\nGoodluck!\n");
         }
 
         // prints the board
