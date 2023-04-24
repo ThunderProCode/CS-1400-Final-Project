@@ -11,7 +11,6 @@ namespace GameServer
         // Set the IP Address and port number 
         static IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
         static int port = 8080;
-
         // Create a TCP/IP socket for the server
         static TcpListener listener;
         static ManualResetEvent waitHandle = new ManualResetEvent(false);
@@ -48,45 +47,7 @@ namespace GameServer
 
                 System.Console.WriteLine("Two players connected");
 
-                while(game.GetState())
-                {
-                    int[] coordinates = new int[]{};
-                    char player = ' ';
-
-                    switch(game.getTurn())
-                    {
-                        // Its players 1 turn
-                        case 1:
-                            System.Console.WriteLine($"Platyer {client1.Client.RemoteEndPoint.ToString()} turn");
-                            Client1Data.SetYourTurn(true);
-                            Client2Data.SetYourTurn(false);
-                            SendData(client1,Client1Data);
-                            SendData(client2,Client2Data);
-                            // Change the current player                        
-                            player = 'X';
-                            // Receive coordinates from player
-                            coordinates = ReceiveData(client1,Client1Data);
-                        break;
-                        // Its player 2 turn
-                        case 2:
-                            System.Console.WriteLine($"Platyer {client1.Client.RemoteEndPoint.ToString()} turn");
-                            Client2Data.SetYourTurn(true);
-                            Client1Data.SetYourTurn(false);
-                            SendData(client2,Client2Data);
-                            SendData(client1,Client1Data);
-                            // Change the current player                        
-                            player = 'O';
-                            // Receive coordinates from player
-                            coordinates = ReceiveData(client2,Client2Data);
-                        break;
-                    }
-
-                    if(game.IsFull()) game.SetState(false);
-                    if(game.GetState()){
-                        game.Move(coordinates,player);
-                        if(game.IsWin()) game.SetState(false);
-                    }
-                }
+                while(game.GetState()) RunGame();
 
                 System.Console.WriteLine("Someone Won");
 
@@ -109,6 +70,63 @@ namespace GameServer
                 System.Console.WriteLine(e.Message);
             }
             listener.Stop();
+        }
+
+        // Executes the game logic
+        static void RunGame()
+        {
+            int[] coordinates = new int[]{};
+            char player = ' ';
+
+            switch(game.getTurn())
+            {
+                // Its players 1 turn
+                case 1:
+                    System.Console.WriteLine($"Platyer {client1.Client.RemoteEndPoint.ToString()} turn");
+
+                    // Set Player 1 Turn to True
+                    Client1Data.SetYourTurn(true);
+
+                    // Set Player 2 Turn to False
+                    Client2Data.SetYourTurn(false);
+
+                    // Send Data to Players
+                    SendData(client1,Client1Data);
+                    SendData(client2,Client2Data);
+
+                    // Change the current player                        
+                    player = 'X';
+                    // Receive coordinates from player
+                    coordinates = ReceiveData(client1,Client1Data);
+                break;
+                // Its player 2 turn
+                case 2:
+                    System.Console.WriteLine($"Platyer {client1.Client.RemoteEndPoint.ToString()} turn");
+
+                    // Set Player 2 Turn to true
+                    Client2Data.SetYourTurn(true);
+
+                    // Set Player 1 Turn to False
+                    Client1Data.SetYourTurn(false);
+
+                    // Send Data to Clients
+                    SendData(client2,Client2Data);
+                    SendData(client1,Client1Data);
+
+                    // Change the current player                        
+                    player = 'O';
+                    // Receive coordinates from player
+                    coordinates = ReceiveData(client2,Client2Data);
+                break;
+            }
+
+            // If the board is full, means its a tie
+            if(game.IsFull()) game.SetState(false);
+
+            if(game.GetState()){
+                game.Move(coordinates,player);
+                if(game.IsWin()) game.SetState(false);
+            }
         }
 
         // Handle Incoming Connections to server

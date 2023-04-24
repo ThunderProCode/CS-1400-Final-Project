@@ -19,10 +19,13 @@ namespace GameClient
                 // Create a TCP/IP socket for the client
                 TcpClient client = new TcpClient();
                 client.Connect(ipAddress,port);
+
                 System.Console.WriteLine("Connected to server.");
 
                 // Get a network stream object for reading and writing data
                 NetworkStream stream = client.GetStream();
+                stream = client.GetStream();
+
                 byte[] buffer = new byte[1024];
                 int bytesRead;
 
@@ -37,12 +40,8 @@ namespace GameClient
                     if(data != null && data.Length > 0){
                         GameData gameData = JsonSerializer.Deserialize<GameData>(data);
 
-                        if(gameData != null) {
-                            Console.Clear();
-                            PrintInstructions();
+                        if(gameData != null) {                            
                             PrintBoard(gameData.GetGameBoard());
-                            System.Console.WriteLine();
-
                             if(gameData.GetIsFull() == true)
                             {
                                 Draw = true;
@@ -54,18 +53,8 @@ namespace GameClient
                             if(gameData.GetYourTurn())
                             {
                                 IsYourTurn = true;
-                                // Ask user to input the coordinates to place their character
-                                string row = GetInput("Type the number of the row in which you want to place: ");
-                                string col = GetInput("Type the number of the column in which you want to place: ");
-                                System.Console.WriteLine($"\nYou are placing in row:{row} column:{col}");
-
-                                // Send message to server
-                                byte[] rowData = Encoding.ASCII.GetBytes(row);
-                                byte[] colData = Encoding.ASCII.GetBytes(col);
-                                stream.Write(rowData, 0, rowData.Length);
-                                stream.Write(colData,0,colData.Length);
-                                stream.Flush();
-
+                                // Request user for Coordinates and send them to server
+                                SendData(stream);
                                 // Repeat until user inputs a valid movement
                                 if(!gameData.GetValidPreviousMovement()){
                                     System.Console.WriteLine("That was not a valid movement!");
@@ -81,19 +70,7 @@ namespace GameClient
                         }
                     }
                 }
-                if(Draw)
-                {
-                    System.Console.WriteLine("Its a tie, no one Won");
-                } else 
-                {
-                    if(IsYourTurn)
-                    {
-                        System.Console.WriteLine("You Won!");
-                    } else
-                    {
-                        System.Console.WriteLine("Player 2 Won");
-                    }
-                }
+                PrintFinalMessage(Draw, IsYourTurn);
                 stream.Close();
                 client.Close();
             }
@@ -105,6 +82,40 @@ namespace GameClient
             {
                 System.Console.WriteLine("Player 1 disconnected, He was afraid of you!");
             }
+        }
+
+        // Print message at the end of a game
+        private static void PrintFinalMessage(bool Draw, bool IsYourTurn)
+        {
+            if(Draw)
+            {
+                System.Console.WriteLine("Its a tie, no one Won");
+            } else 
+            {
+                if(IsYourTurn)
+                {
+                    System.Console.WriteLine("You Won!");
+                } else
+                {
+                    System.Console.WriteLine("Player 2 Won");
+                }
+            }
+        }
+
+        // Ask user to input coordinates and send them to server
+        private static void SendData(NetworkStream stream)
+        {
+            // Ask user to input the coordinates to place their character
+            string row = GetInput("Type the number of the row in which you want to place: ");
+            string col = GetInput("Type the number of the column in which you want to place: ");
+            System.Console.WriteLine($"\nYou are placing in row:{row} column:{col}");
+
+            // Send message to server
+            byte[] rowData = Encoding.ASCII.GetBytes(row);
+            byte[] colData = Encoding.ASCII.GetBytes(col);
+            stream.Write(rowData, 0, rowData.Length);
+            stream.Write(colData,0,colData.Length);
+            stream.Flush();
         }
         
         // Ask user to input coords and validate them
@@ -147,6 +158,8 @@ namespace GameClient
         // prints the board
         private static void PrintBoard(char[][] board)
         {
+            Console.Clear();
+            PrintInstructions();
             System.Console.WriteLine();
             System.Console.WriteLine(" --TIC-TAC-TOE--");
             System.Console.WriteLine();
@@ -166,6 +179,7 @@ namespace GameClient
                 }
             }
             Console.WriteLine("  └───┴───┴───┘");
+            System.Console.WriteLine();
         }
     }
 }
