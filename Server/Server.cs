@@ -7,136 +7,170 @@ namespace GameServer
 {
     class Server 
     {
+
+        // Set the IP Address and port number 
+        static IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
+        static int port = 8080;
+
+        // Create a TCP/IP socket for the server
+        static TcpListener listener;
+        static ManualResetEvent waitHandle = new ManualResetEvent(false);
+        static int connectedClients = 0;
+        static TcpClient client1;
+        static TcpClient client2;
+        static Game game;
+        static GameData Client1Data;
+        static GameData Client2Data;
+
         static void Main(string[] args){
 
-            // Set the IP Address and port number 
-            IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
-            int port = 8080;
+            // Start a new game
+            game = new Game('X','O');
 
-            // Create a TCP/IP socket for the server
-            TcpListener listener = new TcpListener(ipAddress,port);
-            listener.Start();
+            // Intialize initial game data
+            Client1Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false);
+            Client2Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false);
 
-            System.Console.WriteLine($"Server started on {ipAddress}:{port}");
-
-            Game game = new Game('X','O');
-            PrintInstructions();
-            game.Print();
-            
             try
             {
-                 // Accept incoming client connections
-                TcpClient client = listener.AcceptTcpClient();
-                System.Console.WriteLine("Player 2 Connected.");
+                // Create a TCP/IP socket for the server
+                listener = new TcpListener(ipAddress,port);
+                listener.Start();
 
-                // Get a network stream object for reading and writing data
-                NetworkStream stream = client.GetStream();
-                
-                // gameData is the data being sent to the client
-                GameData gameData = new GameData(true,game.GetState(),game.isFull(),game.GetBoard(),game.getTurn());
+                System.Console.WriteLine("Waiting for players to connect...");
 
-                // Serialize the GameData to JSON
-                var currentJson = JsonSerializer.Serialize(gameData);
+                while(connectedClients < 2)
+                {
+                    waitHandle.Reset();
+                    listener.BeginAcceptTcpClient(new AsyncCallback(HandleClientConnection), listener);
+                    waitHandle.WaitOne();
+                }
 
-                // Send the initial GameData to Client
-                byte[] currentBytes = Encoding.ASCII.GetBytes(currentJson);
-                stream.Write(currentBytes,0,currentBytes.Length);
+                System.Console.WriteLine("Two players connected");
 
-                // While the game is running (No one won)
                 while(game.GetState())
                 {
-                    int[] coordinates;
-                    char player;
-                    // If it his the turn of the player 2, the client moves first
-                    if(game.getTurn() == 2){
-                        // Change the current player
-                        player = 'X';
-                        // Receive coords from player2
-                        byte[] buffer = new byte[1024];
-                        int rowBytes = stream.Read(buffer,0,buffer.Length);
-                        string clientRow = Encoding.ASCII.GetString(buffer,0,rowBytes);
-                        int colBytes = stream.Read(buffer,0,buffer.Length);
-                        string clientCol = Encoding.ASCII.GetString(buffer,0,colBytes);
+                    int[] coordinates = new int[]{};
+                    char player = ' ';
 
-                        // Parse coordinates to int[]
-                        coordinates = ParseCoords(clientRow,clientCol);
-                        if(!game.IsMoveValid(coordinates)){
-                            gameData = new GameData(false,game.GetState(),game.isFull(),game.GetBoard(),game.getTurn());
-                        } else {
-                            game.setTurn(1);
-                            gameData = new GameData(true,game.GetState(),game.isFull(),game.GetBoard(),game.getTurn());
-                        }
-                    
-                    // If the turn is 1 the server moves first
-                    } else {
-                        // Change the current player
-                        player = 'O';
-
-                        // Ask user to input coordinates
-                        string localRow = GetInput("Type the number of the row in which you want to place: ");
-                        string localCol = GetInput("Type the number of the column in which you want to place: ");
-
-                        // Parse coordinates to int[]
-                        coordinates = ParseCoords(localRow,localCol);
-
-                        if(!(game.IsMoveValid(coordinates))){
-                            System.Console.WriteLine("That was not a valid movement!");   
-                        } else {
-                            game.setTurn(2);
-                        }
+                    switch(game.getTurn())
+                    {
+                        // Its players 1 turn
+                        case 1:
+                            System.Console.WriteLine($"Platyer {client1.Client.RemoteEndPoint.ToString()} turn");
+                            Client1Data.SetYourTurn(true);
+                            Client2Data.SetYourTurn(false);
+                            SendData(client1,Client1Data);
+                            SendData(client2,Client2Data);
+                            // Change the current player                        
+                            player = 'X';
+                            // Receive coordinates from player
+                            coordinates = ReceiveData(client1,Client1Data);
+                        break;
+                        // Its player 2 turn
+                        case 2:
+                            System.Console.WriteLine($"Platyer {client1.Client.RemoteEndPoint.ToString()} turn");
+                            Client2Data.SetYourTurn(true);
+                            Client1Data.SetYourTurn(false);
+                            SendData(client2,Client2Data);
+                            SendData(client1,Client1Data);
+                            // Change the current player                        
+                            player = 'O';
+                            // Receive coordinates from player
+                            coordinates = ReceiveData(client2,Client2Data);
+                        break;
                     }
 
-                    // try to make a movement in the board
-                        if(game.GetState()){
-                            if(game.IsMoveValid(coordinates)){
-                                game.Move(coordinates,player);
-                                Console.Clear();
-                                PrintInstructions();
-                                game.Print();
-                                System.Console.WriteLine();
-                                if(game.getTurn() == 2) System.Console.WriteLine("Waiting for player 2 to make a move.....");
-                                if(!game.isFull()){
-                                    if(game.IsWin()){
-                                        game.SetState(false);
-                                    }
-                                    gameData = new GameData(true,game.GetState(),game.isFull(),game.GetBoard(),game.getTurn());
-                                } else
-                                {
-                                    game.SetState(false);
-                                    gameData = new GameData(true,game.GetState(),game.isFull(),game.GetBoard(),game.getTurn());
-                                }
-                            }
-                        }
-
-                        // Serialize the GameData to JSON
-                        var json = JsonSerializer.Serialize(gameData);
-
-                        // Send GameData to Client
-                        byte[] bytes = Encoding.ASCII.GetBytes(json);
-                        stream.Write(bytes,0,bytes.Length);
-                        
+                    if(game.IsFull()) game.SetState(false);
+                    if(game.GetState()){
+                        game.Move(coordinates,player);
+                        if(game.IsWin()) game.SetState(false);
+                    }
                 }
 
-                if(game.isFull()){
-                    System.Console.WriteLine("Its a draw! No one won");
-                } else
-                {
-                    string winner = game.getTurn() == 1 ? "Player 2" : "Player 1";
-                    System.Console.WriteLine($"{winner} won - Game Finished");
-                }
+                System.Console.WriteLine("Someone Won");
 
-                // Close the network stream and client connection
-                stream.Close();
-                client.Close();
+                // Send Final Data to Clients
+                Client1Data.SetGameState(false);
+                Client2Data.SetGameState(false);
+                SendData(client1,Client1Data);
+                SendData(client2,Client2Data);
 
                 // Stop listening for incoming connections
                 listener.Stop();
+
+                // Close clients connections
+                client1.Close();
+                client2.Close();
+
             }
-            catch (IOException)
+            catch (Exception e)
             {
-                System.Console.WriteLine("Player 2 disconnected, he was afraid of you!");
+                System.Console.WriteLine(e.Message);
             }
-           
+            listener.Stop();
+        }
+
+        // Handle Incoming Connections to server
+        static void HandleClientConnection(IAsyncResult result)
+        {
+            TcpListener listener = (TcpListener)result.AsyncState;
+            TcpClient client = listener.EndAcceptTcpClient(result);
+            Interlocked.Increment(ref connectedClients);
+            if (connectedClients == 1)
+            {
+                client1 = client;
+            }
+            else
+            {
+                client2 = client;
+            }
+            waitHandle.Set();
+        }
+
+        // Send Data to Clients
+        static void SendData(TcpClient client, GameData ClientData)
+        {
+            // System.Console.WriteLine($"Sending data to client{ client.Client.RemoteEndPoint.ToString() }: {ClientData.GetYouTurn()}");
+            // Get a network stream object for reading and writing data
+            NetworkStream stream = client.GetStream();
+
+            // Serialize the GameData to JSON
+            var currentJson = JsonSerializer.Serialize(ClientData);
+
+            // Send game data to client
+            byte[] currentBytes = Encoding.ASCII.GetBytes(currentJson);
+            stream.Write(currentBytes,0,currentBytes.Length);
+            stream.Flush();
+        }
+        
+        // Receive coordinates from clients
+        static int[] ReceiveData(TcpClient client, GameData ClientData)
+        {
+            int[] coordinates;
+            // Get a network stream object for reading and writing data
+            NetworkStream stream = client.GetStream();
+
+            do
+            {
+                // Read coordinates from client
+                byte[] buffer = new byte[1024];
+                int rowBytes = stream.Read(buffer,0,buffer.Length);
+                string clientRow = Encoding.ASCII.GetString(buffer,0,rowBytes);
+                int colBytes = stream.Read(buffer,0,buffer.Length);
+                string clientCol = Encoding.ASCII.GetString(buffer,0,colBytes);
+                
+                // Parse coordinates to int[]
+                coordinates = ParseCoords(clientRow,clientCol);
+                if(!game.IsMoveValid(coordinates))
+                {
+                    ClientData = new GameData(false,game.GetState(),game.IsFull(),game.GetBoard(),true);
+                    SendData(client,ClientData);
+                }
+                
+            } while (!game.IsMoveValid(coordinates));
+
+            return coordinates;
         }
 
         // Parse and returns coordinates in string format to int[]
@@ -150,41 +184,7 @@ namespace GameServer
             return coordinates;
         }
 
-        // Ask user to input coordinates and validate them
-        private static string GetInput(string message){
-            System.Console.Write(message);
-            string? input = Console.ReadLine();
-
-            // Validate the user input
-            bool correctInput = false;
-            while(input == null || correctInput == false){
-                if(input != null){
-                    if(Int32.TryParse(input,out int rowNum))
-                    {
-                        if(rowNum < 0 || rowNum > 2)
-                        {
-                            System.Console.WriteLine("Please type a number between 0 and 2");
-                            input = Console.ReadLine();
-                        } else 
-                        {
-                            correctInput = true;
-                        } 
-                    }else {
-                        System.Console.WriteLine("Please type a number between 0 and 2");
-                        input = Console.ReadLine();
-                    }            
-                } else {
-                    System.Console.WriteLine("Please type number common!: ");
-                    input = Console.ReadLine();
-                }
-            }
-            return input;
-        }
-        // Prints the game instructions
-        private static void PrintInstructions()
-        {
-            System.Console.WriteLine("Instructions:\n1- Type the number of the row in which you want to place\n2- Type the number of the column in which you want to place\n3- If your movement was not valid, you will have to type the inputs again until you make a valid movement.\nGoodluck!\n");
-        }
     }
 }
 
+ 

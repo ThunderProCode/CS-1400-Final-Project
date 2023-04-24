@@ -13,8 +13,7 @@ namespace GameClient
             // Set the IP address and port number for the server
             IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
             int port = 8080;
-            bool isWinner = true;
-            int playerTurn = 1;
+
             try
             {
                 // Create a TCP/IP socket for the client
@@ -24,66 +23,76 @@ namespace GameClient
 
                 // Get a network stream object for reading and writing data
                 NetworkStream stream = client.GetStream();
-                
-                bool GameState = true;
-                while(GameState)
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+
+                bool Draw = false;
+                bool IsYourTurn = false;
+                while(true)
                 {
                     // Receive response from server
-                    byte[] buffer = new byte[1024];
-                    int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                    bytesRead = stream.Read(buffer, 0, buffer.Length);
                     string data = Encoding.ASCII.GetString(buffer, 0, bytesRead);
 
                     if(data != null && data.Length > 0){
-                        GameData? gameData = JsonSerializer.Deserialize<GameData>(data);
+                        GameData gameData = JsonSerializer.Deserialize<GameData>(data);
+
                         if(gameData != null) {
                             Console.Clear();
                             PrintInstructions();
                             PrintBoard(gameData.GetGameBoard());
                             System.Console.WriteLine();
-                            if(!gameData.GetIsFull())
+
+                            if(gameData.GetIsFull() == true)
                             {
-                                if(gameData.GetGameState())
-                                {
-                                    if(gameData.GetTurn() == 2){
-                                        playerTurn = 2;
-                                        // Ask user to input the coordinates to place their character
-                                        string row = GetInput("Type the number of the row in which you want to place: ");
-                                        string col = GetInput("Type the number of the column in which you want to place: ");
-                                        System.Console.WriteLine($"\nYou are placing in row:{row} column:{col}");
+                                Draw = true;
+                                break;    
+                            } 
+                            if(gameData.GetGameState() == false) break;
 
-                                        // Send message to server
-                                        byte[] rowData = Encoding.ASCII.GetBytes(row);
-                                        byte[] colData = Encoding.ASCII.GetBytes(col);
-                                        stream.Write(rowData, 0, rowData.Length);
-                                        stream.Write(colData,0,colData.Length);
+                            // Check if it's the current player's turn
+                            if(gameData.GetYourTurn())
+                            {
+                                IsYourTurn = true;
+                                // Ask user to input the coordinates to place their character
+                                string row = GetInput("Type the number of the row in which you want to place: ");
+                                string col = GetInput("Type the number of the column in which you want to place: ");
+                                System.Console.WriteLine($"\nYou are placing in row:{row} column:{col}");
 
-                                        // Repeat until user inputs a valid movement
-                                        if(!gameData.GetValidPreviousMovement()){
-                                            System.Console.WriteLine("That was not a valid movement!");
-                                            continue;
-                                        }     
-                                    } else 
-                                    {
-                                        playerTurn = 1;
-                                    }
+                                // Send message to server
+                                byte[] rowData = Encoding.ASCII.GetBytes(row);
+                                byte[] colData = Encoding.ASCII.GetBytes(col);
+                                stream.Write(rowData, 0, rowData.Length);
+                                stream.Write(colData,0,colData.Length);
+                                stream.Flush();
+
+                                // Repeat until user inputs a valid movement
+                                if(!gameData.GetValidPreviousMovement()){
+                                    System.Console.WriteLine("That was not a valid movement!");
+                                    continue;
                                 } 
-                            } else 
+                            } 
+                            // If it's not the current player's turn
+                            else 
                             {
-                                isWinner = false;
-                                GameState = gameData.GetGameState();
+                                IsYourTurn = false;
+                                System.Console.WriteLine("Waiting for other player to make a move....");
                             }
-                            System.Console.WriteLine("Waiting for player 1 to make a move....");
-                            GameState = gameData.GetGameState();
                         }
                     }
-
                 }
-                if(isWinner){
-                    string winner = playerTurn == 1 ? "Player 1" : "Player 2";
-                    System.Console.WriteLine($"{winner} Won - Game Finished");
+                if(Draw)
+                {
+                    System.Console.WriteLine("Its a tie, no one Won");
                 } else 
                 {
-                    System.Console.WriteLine("Its a draw, No one won");
+                    if(IsYourTurn)
+                    {
+                        System.Console.WriteLine("You Won!");
+                    } else
+                    {
+                        System.Console.WriteLine("Player 2 Won");
+                    }
                 }
                 stream.Close();
                 client.Close();
@@ -101,7 +110,7 @@ namespace GameClient
         // Ask user to input coords and validate them
         private static string GetInput(string message){
             System.Console.Write(message);
-            string? input = Console.ReadLine();
+            string input = Console.ReadLine();
 
             // Validate the user input
             bool correctInput = false;

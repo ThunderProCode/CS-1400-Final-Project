@@ -6,14 +6,14 @@ namespace GameServer
         public bool GameState {get; set; }
         public bool IsFull {get; set; }
         public char[][] GameBoard {get; set; }
-        public int Turn {get; set; }
+        public bool YourTurn {get; set; }
 
-        public GameData(bool validPreviousMovement,bool gameState,bool isFull, char[][] gameBoard,int turn)
+        public GameData(bool validPreviousMovement,bool gameState,bool isFull, char[][] gameBoard,bool yourTurn)
         {
             ValidPreviousMovement = validPreviousMovement;
             GameState = gameState;
             GameBoard = gameBoard;
-            Turn = turn;
+            YourTurn = yourTurn;
             IsFull = isFull;
         }
 
@@ -35,14 +35,23 @@ namespace GameServer
             return this.GameState;
         }
 
+        public void SetGameState(bool NewGameState)
+        {
+            this.GameState = NewGameState;
+        }
+
         public char[][] GetGameBoard()
         {
             return this.GameBoard;
         }
 
-        public int GetTurn()
+        public bool GetYourTurn()
         {
-            return this.Turn;
+            return this.YourTurn;
+        }
+        public void SetYourTurn(bool NewYourTurn)
+        {
+            this.YourTurn = NewYourTurn;
         }
     }
 }

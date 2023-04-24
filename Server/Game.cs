@@ -53,7 +53,7 @@ namespace GameServer
         }
 
         // Returns true if all the spaces on the board are filled
-        public bool isFull(){
+        public bool IsFull(){
             for (int row = 0; row < 3; row++)
             {
                 for (int col = 0; col < 3; col++)
@@ -63,6 +63,7 @@ namespace GameServer
                     }
                 }
             }
+            this.state = false;
             return true;
         }
 
@@ -119,6 +120,13 @@ namespace GameServer
         // Make sure to validate coordinates with IsMoveValid() before calling Move()
         public void Move(int[] position,char player){
             this.board[position[0]][position[1]] = player;
+            if(this.turn == 1)
+            {
+                this.turn = 2;
+            } else if(this.turn == 2)
+            {
+                this.turn = 1;
+            }
         }
 
         // Validate that the user movement is valid
