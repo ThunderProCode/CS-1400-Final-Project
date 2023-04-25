@@ -22,6 +22,9 @@ namespace GameServer
 
         static void Main(string[] args){
 
+            // Start a new game
+            game = new Game('X','O');
+
             bool PlayAgain = true;
 
             // Create a TCP/IP socket for the server
@@ -30,16 +33,14 @@ namespace GameServer
 
             do
             {
-                // Start a new game
-                game = new Game('X','O');
+                game.Reset();
 
                 // Intialize initial game data
-                Client1Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false);
-                Client2Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false);
+                Client1Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,game.GetPlayer1Score(),game.GetPlayer2Score());
+                Client2Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,game.GetPlayer2Score(),game.GetPlayer1Score());
 
                 try
                 {
-
                     System.Console.WriteLine("Waiting for players to connect...");
 
                     while(connectedClients < 2)
@@ -53,7 +54,7 @@ namespace GameServer
 
                     while(game.GetState()) RunGame();
 
-                    System.Console.WriteLine("Someone Won");
+                    PrintWinner();
 
                     // Send Final Data to Clients
                     Client1Data.SetGameState(false);
@@ -77,7 +78,6 @@ namespace GameServer
 
                     // Reset the number of connected clients
                     connectedClients = 0;
-                    
                 }
                 catch (Exception e)
                 {
@@ -95,6 +95,20 @@ namespace GameServer
 
         }
 
+        // Prints the game winner and adds up to their score
+        static void PrintWinner()
+        {
+            if(game.getTurn() == 2){
+                game.SetPlayer1Score(game.GetPlayer1Score() + 1);
+                System.Console.WriteLine($"{client1.Client.RemoteEndPoint.ToString()} won!");
+            } else 
+            {
+                game.SetPlayer2Score(game.GetPlayer2Score() + 1);
+                System.Console.WriteLine($"{client1.Client.RemoteEndPoint.ToString()} won!");
+            }
+            System.Console.WriteLine($"Player 1: {game.GetPlayer1Score()} - Player 2: {game.GetPlayer2Score()}");
+        }
+
         // Executes the game logic
         static void RunGame()
         {
@@ -103,10 +117,9 @@ namespace GameServer
 
             switch(game.getTurn())
             {
-
                 // Its players 1 turn
                 case 1:
-                    System.Console.WriteLine($"Platyer {client1.Client.RemoteEndPoint.ToString()} turn");
+                    System.Console.WriteLine($"Player {client1.Client.RemoteEndPoint.ToString()} turn");
 
                     // Set Player 1 Turn to True
                     Client1Data.SetYourTurn(true);
@@ -143,7 +156,6 @@ namespace GameServer
                     coordinates = ReceiveData(client2,Client2Data);
                 break;
             }
-
             // If the board is full, means its a tie
             if(game.IsFull()) game.SetState(false);
 
@@ -187,7 +199,6 @@ namespace GameServer
         // Send Data to Clients
         static void SendData(TcpClient client, GameData ClientData)
         {
-            // System.Console.WriteLine($"Sending data to client{ client.Client.RemoteEndPoint.ToString() }: {ClientData.GetYouTurn()}");
             // Get a network stream object for reading and writing data
             NetworkStream stream = client.GetStream();
 
@@ -220,7 +231,7 @@ namespace GameServer
                 coordinates = ParseCoords(clientRow,clientCol);
                 if(!game.IsMoveValid(coordinates))
                 {
-                    ClientData = new GameData(false,game.GetState(),game.IsFull(),game.GetBoard(),true);
+                    ClientData = new GameData(false,game.GetState(),game.IsFull(),game.GetBoard(),true, game.GetPlayer1Score(),game.GetPlayer2Score());
                     SendData(client,ClientData);
                 }
                 
@@ -239,7 +250,6 @@ namespace GameServer
             coordinates[1] = Convert.ToInt32(col);
             return coordinates;
         }
-
     }
 }
 

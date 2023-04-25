@@ -13,6 +13,8 @@ namespace GameServer
         private int turn = 1;
         // State means - True game running - False game stopped because someone won or left
         private bool state = false;
+        private int Player1Score = 0;
+        private int Player2Score = 0;
         public Game(char player1,char player2)
         {
             Random rnd = new Random();
@@ -21,6 +23,51 @@ namespace GameServer
             this.state = true;
             this.turn = rnd.Next(1,3);
         }
+
+        // Clean board, set state back to running, the player who lost starts first
+        public void Reset()
+        {
+            this.state = true;
+            for (int row = 0; row < 3; row++)
+            {
+                for (int col = 0; col < 3; col++)
+                {
+                    this.board[row][col] = ' ';
+                }
+            }
+            if(this.turn == 1)
+            {
+                this.turn = 2;
+            } else if(this.turn == 2)
+            {
+                this.turn = 1;
+            }
+        }
+
+        // Get Player 1 Score
+        public int GetPlayer1Score()
+        {
+            return this.Player1Score;
+        }
+
+        // Set Player 2 Score
+        public void SetPlayer1Score(int newScore)
+        {
+            this.Player1Score = newScore;
+        }
+
+        // Get Player 1 Score
+        public int GetPlayer2Score()
+        {
+            return this.Player2Score;
+        }
+
+        // Set Player 2 Score
+        public void SetPlayer2Score(int newScore)
+        {
+            this.Player2Score = newScore;
+        }
+
         // Get the current player turn
         public int getTurn(){
             return this.turn;

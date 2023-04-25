@@ -7,14 +7,28 @@ namespace GameClient
         public bool IsFull {get; set; }
         public char[][] GameBoard {get; set; }
         public bool YourTurn {get; set; }
+        public int MyScore {get; set; }
+        public int Player2Score {get; set; }
 
-        public GameData(bool validPreviousMovement,bool gameState,bool isFull, char[][] gameBoard,bool yourTurn)
+        public GameData(bool validPreviousMovement,bool gameState,bool isFull, char[][] gameBoard,bool yourTurn,int player2Score, int myScore)
         {
             ValidPreviousMovement = validPreviousMovement;
             GameState = gameState;
             GameBoard = gameBoard;
             YourTurn = yourTurn;
             IsFull = isFull;
+            Player2Score = player2Score;
+            MyScore = myScore;
+        }
+
+        public int GetMyScore()
+        {
+            return this.MyScore;
+        }
+
+        public int GetPlayer2Score()
+        {
+            return this.Player2Score;
         }
 
         public bool GetIsFull(){

@@ -47,6 +47,7 @@ namespace GameClient
                     TcpClient client = new TcpClient();
                     client.Connect(ipAddress,port);
                     System.Console.WriteLine("Connected to server.");
+                    System.Console.WriteLine("Waiting for Player 2....");
                     HandleGame(client);
                 }
                 catch (SocketException)
@@ -85,6 +86,7 @@ namespace GameClient
                     if(gameData != null)
                     {                            
                         PrintBoard(gameData.GetGameBoard());
+                        PrintScores(gameData.GetMyScore(),gameData.GetPlayer2Score());
                         if(gameData.GetIsFull() == true)
                         {
                             Draw = true;
@@ -99,6 +101,7 @@ namespace GameClient
                             IsYourTurn = true;
                             // Request user for Coordinates and send them to server
                             SendData(stream);
+
                             // Repeat until user inputs a valid movement
                             if(!gameData.GetValidPreviousMovement()){
                                 System.Console.WriteLine("That was not a valid movement!");
@@ -118,6 +121,12 @@ namespace GameClient
             PrintFinalMessage(Draw, IsYourTurn);
             AskPlayAgain(client);
             stream.Close();
+        }
+
+        private static void PrintScores(int MyScore, int Score2)
+        {
+            System.Console.WriteLine($"Your Score: {MyScore} - Player 2: {Score2}");
+            System.Console.WriteLine();
         }
 
         // Print the main menu and ask user for input
