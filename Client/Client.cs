@@ -8,80 +8,157 @@ namespace GameClient
 {
     class Client
     {
+        static bool PlayAgain = true;
         static void Main(string[] args)
+        {
+            int opt = 0;
+            while(opt != 2){
+                opt = MainMenu();
+                switch(opt)
+                {
+                    // Play the game
+                    case 1:
+                        RunGame();
+                    break;
+                    // Exit the game
+                    case 2:
+                        System.Console.WriteLine("Thanks for playing, see you later!");
+                    break;
+
+                    default:
+                        System.Console.WriteLine("Invalid Option");
+                    break;
+                }
+            }
+        }
+
+        // Connect to server and runs game logic
+        private static void RunGame()
         {
             // Set the IP address and port number for the server
             IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
             int port = 8080;
 
-            try
-            {
-                // Create a TCP/IP socket for the client
-                TcpClient client = new TcpClient();
-                client.Connect(ipAddress,port);
-
-                System.Console.WriteLine("Connected to server.");
-
-                // Get a network stream object for reading and writing data
-                NetworkStream stream = client.GetStream();
-                stream = client.GetStream();
-
-                byte[] buffer = new byte[1024];
-                int bytesRead;
-
-                bool Draw = false;
-                bool IsYourTurn = false;
-                while(true)
+            do
+            {    
+                try
                 {
-                    // Receive response from server
-                    bytesRead = stream.Read(buffer, 0, buffer.Length);
-                    string data = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                    // Create a TCP/IP socket for the client
+                    TcpClient client = new TcpClient();
+                    client.Connect(ipAddress,port);
+                    System.Console.WriteLine("Connected to server.");
+                    HandleGame(client);
+                }
+                catch (SocketException)
+                {
+                    System.Console.WriteLine("Make sure the server is running before you run the client");
+                    break;
+                }
+                catch (IOException)
+                {
+                    System.Console.WriteLine("Player 1 disconnected, He was afraid of you!");
+                    break;
+                }
+            } while (PlayAgain);
+        }
 
-                    if(data != null && data.Length > 0){
-                        GameData gameData = JsonSerializer.Deserialize<GameData>(data);
+        // Handle game logic
+        private static void HandleGame(TcpClient client)
+        {
+            // Get a network stream object for reading and writing data
+            NetworkStream stream = client.GetStream();
 
-                        if(gameData != null) {                            
-                            PrintBoard(gameData.GetGameBoard());
-                            if(gameData.GetIsFull() == true)
-                            {
-                                Draw = true;
-                                break;    
+            bool Draw = false;
+            bool IsYourTurn = false;
+
+            while(true)
+            {
+                // Receive response from server
+                byte[] buffer = new byte[1024];
+                int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                string data = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+
+                if(data != null && data.Length > 0)
+                {
+                    GameData gameData = JsonSerializer.Deserialize<GameData>(data);
+
+                    if(gameData != null)
+                    {                            
+                        PrintBoard(gameData.GetGameBoard());
+                        if(gameData.GetIsFull() == true)
+                        {
+                            Draw = true;
+                            break;    
+                        }
+
+                        if(gameData.GetGameState() == false) break;
+
+                        // Check if it's the current player's turn
+                        if(gameData.GetYourTurn())
+                        {
+                            IsYourTurn = true;
+                            // Request user for Coordinates and send them to server
+                            SendData(stream);
+                            // Repeat until user inputs a valid movement
+                            if(!gameData.GetValidPreviousMovement()){
+                                System.Console.WriteLine("That was not a valid movement!");
+                                continue;
                             } 
-                            if(gameData.GetGameState() == false) break;
-
-                            // Check if it's the current player's turn
-                            if(gameData.GetYourTurn())
-                            {
-                                IsYourTurn = true;
-                                // Request user for Coordinates and send them to server
-                                SendData(stream);
-                                // Repeat until user inputs a valid movement
-                                if(!gameData.GetValidPreviousMovement()){
-                                    System.Console.WriteLine("That was not a valid movement!");
-                                    continue;
-                                } 
-                            } 
-                            // If it's not the current player's turn
-                            else 
-                            {
-                                IsYourTurn = false;
-                                System.Console.WriteLine("Waiting for other player to make a move....");
-                            }
+                        } 
+                        // If it's not the current player's turn
+                        else 
+                        {
+                            IsYourTurn = false;
+                            System.Console.WriteLine("Waiting for other player to make a move....");
                         }
                     }
                 }
-                PrintFinalMessage(Draw, IsYourTurn);
-                stream.Close();
-                client.Close();
             }
-            catch (SocketException)
+
+            PrintFinalMessage(Draw, IsYourTurn);
+            AskPlayAgain(client);
+            stream.Close();
+        }
+
+        // Print the main menu and ask user for input
+        private static int MainMenu()
+        {
+            System.Console.WriteLine("====MENU====\n1)Play\n2)Exit\nType an option:");
+            string input = Console.ReadLine();
+            bool correctInput = Int32.TryParse(input,out int option);
+            while(!correctInput){
+                System.Console.WriteLine("Please type a correct option: ");
+                input = Console.ReadLine();
+            }
+            return option;
+        }
+
+        // Ask user if wants to play again and send to server
+        private static void AskPlayAgain(TcpClient server)
+        {
+            System.Console.WriteLine("Do you want to play again? (Y - yes, N - no): ");
+            string response = Console.ReadLine();
+            response = response.ToUpper();
+
+            while(response.Length > 1 || (response != "Y" && response != "N"))
             {
-                System.Console.WriteLine("Make sure the server is running before you run the client");
+                System.Console.WriteLine("Please type Y or N: ");
+                response = Console.ReadLine();
+                response = response.ToUpper();
             }
-            catch (IOException)
+
+            if(response == "Y")
             {
-                System.Console.WriteLine("Player 1 disconnected, He was afraid of you!");
+                PlayAgain = true;
+            } else 
+            {
+                PlayAgain = false;
             }
+
+            NetworkStream stream = server.GetStream();
+            byte[] responseData = Encoding.ASCII.GetBytes(response);
+            stream.Write(responseData, 0, responseData.Length);
+
         }
 
         // Print message at the end of a game

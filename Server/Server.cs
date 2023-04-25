@@ -7,7 +7,6 @@ namespace GameServer
 {
     class Server 
     {
-
         // Set the IP Address and port number 
         static IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
         static int port = 8080;
@@ -23,53 +22,77 @@ namespace GameServer
 
         static void Main(string[] args){
 
-            // Start a new game
-            game = new Game('X','O');
+            bool PlayAgain = true;
 
-            // Intialize initial game data
-            Client1Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false);
-            Client2Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false);
+            // Create a TCP/IP socket for the server
+            listener = new TcpListener(ipAddress,port);
+            listener.Start();
 
-            try
+            do
             {
-                // Create a TCP/IP socket for the server
-                listener = new TcpListener(ipAddress,port);
-                listener.Start();
+                // Start a new game
+                game = new Game('X','O');
 
-                System.Console.WriteLine("Waiting for players to connect...");
+                // Intialize initial game data
+                Client1Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false);
+                Client2Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false);
 
-                while(connectedClients < 2)
+                try
                 {
-                    waitHandle.Reset();
-                    listener.BeginAcceptTcpClient(new AsyncCallback(HandleClientConnection), listener);
-                    waitHandle.WaitOne();
+
+                    System.Console.WriteLine("Waiting for players to connect...");
+
+                    while(connectedClients < 2)
+                    {
+                        waitHandle.Reset();
+                        listener.BeginAcceptTcpClient(new AsyncCallback(HandleClientConnection), listener);
+                        waitHandle.WaitOne();
+                    }
+
+                    System.Console.WriteLine("Two players connected");
+
+                    while(game.GetState()) RunGame();
+
+                    System.Console.WriteLine("Someone Won");
+
+                    // Send Final Data to Clients
+                    Client1Data.SetGameState(false);
+                    Client2Data.SetGameState(false);
+                    SendData(client1,Client1Data);
+                    SendData(client2,Client2Data);
+                    System.Console.WriteLine("Data Sent");
+                    
+                    string response1 = ReceiveString(client1);
+                    string response2 = ReceiveString(client2);
+
+                    if(response1.ToUpper() == "Y" && response2.ToUpper() == "Y")
+                    {
+                        System.Console.WriteLine("Players are playing again! ");
+                    }
+                    else
+                    {
+                        PlayAgain = false;
+                        System.Console.WriteLine("Not playing again");
+                    }
+
+                    // Reset the number of connected clients
+                    connectedClients = 0;
+                    
+                }
+                catch (Exception e)
+                {
+                    System.Console.WriteLine(e.Message);
                 }
 
-                System.Console.WriteLine("Two players connected");
+            } while (PlayAgain);
 
-                while(game.GetState()) RunGame();
-
-                System.Console.WriteLine("Someone Won");
-
-                // Send Final Data to Clients
-                Client1Data.SetGameState(false);
-                Client2Data.SetGameState(false);
-                SendData(client1,Client1Data);
-                SendData(client2,Client2Data);
-
-                // Stop listening for incoming connections
-                listener.Stop();
-
-                // Close clients connections
-                client1.Close();
-                client2.Close();
-
-            }
-            catch (Exception e)
-            {
-                System.Console.WriteLine(e.Message);
-            }
+            // Stop listening for incoming connections
             listener.Stop();
+
+            // Close clients connections
+            client1.Close();
+            client2.Close();
+
         }
 
         // Executes the game logic
@@ -80,6 +103,7 @@ namespace GameServer
 
             switch(game.getTurn())
             {
+
                 // Its players 1 turn
                 case 1:
                     System.Console.WriteLine($"Platyer {client1.Client.RemoteEndPoint.ToString()} turn");
@@ -101,7 +125,7 @@ namespace GameServer
                 break;
                 // Its player 2 turn
                 case 2:
-                    System.Console.WriteLine($"Platyer {client1.Client.RemoteEndPoint.ToString()} turn");
+                    System.Console.WriteLine($"Platyer {client2.Client.RemoteEndPoint.ToString()} turn");
 
                     // Set Player 2 Turn to true
                     Client2Data.SetYourTurn(true);
@@ -127,6 +151,20 @@ namespace GameServer
                 game.Move(coordinates,player);
                 if(game.IsWin()) game.SetState(false);
             }
+        }
+
+        // Receive string data from clients
+        static string ReceiveString(TcpClient client)
+        {
+            // Get a network stream object for reading and writing data
+            NetworkStream stream = client.GetStream();
+
+            // Read data from client
+            byte[] buffer = new byte[1024];
+            int bytes = stream.Read(buffer, 0, buffer.Length);
+            string data = Encoding.ASCII.GetString(buffer, 0, bytes);
+            System.Console.WriteLine(data);
+            return data.Trim();
         }
 
         // Handle Incoming Connections to server
