@@ -9,8 +9,9 @@ namespace GameClient
         public bool YourTurn {get; set; }
         public int MyScore {get; set; }
         public int Player2Score {get; set; }
+        public bool PlayersConnected {get; set; }
 
-        public GameData(bool validPreviousMovement,bool gameState,bool isFull, char[][] gameBoard,bool yourTurn,int player2Score, int myScore)
+        public GameData(bool validPreviousMovement,bool gameState,bool isFull, char[][] gameBoard,bool yourTurn,int player2Score, int myScore, bool playersConnected)
         {
             ValidPreviousMovement = validPreviousMovement;
             GameState = gameState;
@@ -19,6 +20,7 @@ namespace GameClient
             IsFull = isFull;
             Player2Score = player2Score;
             MyScore = myScore;
+            PlayersConnected = playersConnected;
         }
 
         public int GetMyScore()

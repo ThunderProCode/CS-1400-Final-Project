@@ -9,6 +9,7 @@ namespace GameClient
     class Client
     {
         static bool PlayAgain = true;
+        static bool PlayerDisconnected = false;
         static void Main(string[] args)
         {
             int opt = 0;
@@ -40,7 +41,7 @@ namespace GameClient
             int port = 8080;
 
             do
-            {    
+            { 
                 try
                 {
                     // Create a TCP/IP socket for the client
@@ -57,7 +58,7 @@ namespace GameClient
                 }
                 catch (IOException)
                 {
-                    System.Console.WriteLine("Player 1 disconnected, He was afraid of you!");
+                    System.Console.WriteLine("Player 2 disconnected, He was afraid of you!");
                     break;
                 }
             } while (PlayAgain);
@@ -84,42 +85,58 @@ namespace GameClient
                     GameData gameData = JsonSerializer.Deserialize<GameData>(data);
 
                     if(gameData != null)
-                    {                            
-                        PrintBoard(gameData.GetGameBoard());
-                        PrintScores(gameData.GetMyScore(),gameData.GetPlayer2Score());
-                        if(gameData.GetIsFull() == true)
+                    {                     
+                        if(gameData.PlayersConnected)
                         {
-                            Draw = true;
-                            break;    
-                        }
+                            PlayerDisconnected = false;
+                            PrintBoard(gameData.GetGameBoard());
+                            PrintScores(gameData.GetMyScore(),gameData.GetPlayer2Score());
 
-                        if(gameData.GetGameState() == false) break;
+                            if(gameData.GetIsFull() == true)
+                            {
+                                Draw = true;
+                                break;    
+                            }
 
-                        // Check if it's the current player's turn
-                        if(gameData.GetYourTurn())
-                        {
-                            IsYourTurn = true;
-                            // Request user for Coordinates and send them to server
-                            SendData(stream);
+                            if(gameData.GetGameState() == false) break;
 
-                            // Repeat until user inputs a valid movement
-                            if(!gameData.GetValidPreviousMovement()){
-                                System.Console.WriteLine("That was not a valid movement!");
-                                continue;
+                            // Check if it's the current player's turn
+                            if(gameData.GetYourTurn())
+                            {
+                                IsYourTurn = true;
+                                // Request user for Coordinates and send them to server
+                                SendData(stream);
+
+                                // Repeat until user inputs a valid movement
+                                if(!gameData.GetValidPreviousMovement()){
+                                    System.Console.WriteLine("That was not a valid movement!");
+                                    continue;
+                                } 
                             } 
-                        } 
-                        // If it's not the current player's turn
-                        else 
+                            // If it's not the current player's turn
+                            else 
+                            {
+                                IsYourTurn = false;
+                                System.Console.WriteLine("Waiting for other player to make a move....");
+                            }
+                        } else 
                         {
-                            IsYourTurn = false;
-                            System.Console.WriteLine("Waiting for other player to make a move....");
-                        }
+                            PlayerDisconnected = true;
+                            PlayAgain = false;
+                            break;
+                        }       
                     }
                 }
             }
 
-            PrintFinalMessage(Draw, IsYourTurn);
-            AskPlayAgain(client);
+            if(!PlayerDisconnected)
+            {
+                PrintFinalMessage(Draw, IsYourTurn);
+                AskPlayAgain(client);
+            } else 
+            {
+                System.Console.WriteLine("Player 2 disconnected, He was afraid of you!");
+            }
             stream.Close();
         }
 

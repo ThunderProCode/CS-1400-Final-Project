@@ -36,8 +36,8 @@ namespace GameServer
                 game.Reset();
 
                 // Intialize initial game data
-                Client1Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,game.GetPlayer1Score(),game.GetPlayer2Score());
-                Client2Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,game.GetPlayer2Score(),game.GetPlayer1Score());
+                Client1Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,game.GetPlayer1Score(),game.GetPlayer2Score(),true);
+                Client2Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,game.GetPlayer2Score(),game.GetPlayer1Score(),true);
 
                 try
                 {
@@ -52,15 +52,44 @@ namespace GameServer
 
                     System.Console.WriteLine("Two players connected");
 
-                    while(game.GetState()) RunGame();
+                    while(true)
+                    {
+                        GameData PlayerDisconnectedData = new GameData(false,false,true,game.GetBoard(),false,0,0,false);
 
+                        // Check if either player has disconnected
+                        if(!client1.Connected)
+                        {
+                            System.Console.WriteLine("Player 1 has disconnected, Game has ended");
+                            connectedClients = 0;
+                            SendGameData(client2,PlayerDisconnectedData);
+                            client2.Close();
+                            break;
+                        } else if(!client2.Connected)
+                        {
+                            System.Console.WriteLine("Player 2 has disconnected, Game has ended");
+                            connectedClients = 0;
+                            SendGameData(client1,PlayerDisconnectedData);
+                            client1.Close();
+                            break;
+                        }
+
+                        RunGame();
+
+                        // If the game has ended, break out of the loop
+                        if(!game.GetState())
+                        {
+                            break;
+                        }
+                    }
+
+                    
                     PrintWinner();
 
                     // Send Final Data to Clients
                     Client1Data.SetGameState(false);
                     Client2Data.SetGameState(false);
-                    SendData(client1,Client1Data);
-                    SendData(client2,Client2Data);
+                    SendGameData(client1,Client1Data);
+                    SendGameData(client2,Client2Data);
                     System.Console.WriteLine("Data Sent");
                     
                     string response1 = ReceiveString(client1);
@@ -128,8 +157,8 @@ namespace GameServer
                     Client2Data.SetYourTurn(false);
 
                     // Send Data to Players
-                    SendData(client1,Client1Data);
-                    SendData(client2,Client2Data);
+                    SendGameData(client1,Client1Data);
+                    SendGameData(client2,Client2Data);
 
                     // Change the current player                        
                     player = 'X';
@@ -138,7 +167,7 @@ namespace GameServer
                 break;
                 // Its player 2 turn
                 case 2:
-                    System.Console.WriteLine($"Platyer {client2.Client.RemoteEndPoint.ToString()} turn");
+                    System.Console.WriteLine($"Player {client2.Client.RemoteEndPoint.ToString()} turn");
 
                     // Set Player 2 Turn to true
                     Client2Data.SetYourTurn(true);
@@ -147,8 +176,8 @@ namespace GameServer
                     Client1Data.SetYourTurn(false);
 
                     // Send Data to Clients
-                    SendData(client2,Client2Data);
-                    SendData(client1,Client1Data);
+                    SendGameData(client2,Client2Data);
+                    SendGameData(client1,Client1Data);
 
                     // Change the current player                        
                     player = 'O';
@@ -182,22 +211,38 @@ namespace GameServer
         // Handle Incoming Connections to server
         static void HandleClientConnection(IAsyncResult result)
         {
+            
             TcpListener listener = (TcpListener)result.AsyncState;
             TcpClient client = listener.EndAcceptTcpClient(result);
             Interlocked.Increment(ref connectedClients);
+
             if (connectedClients == 1)
             {
                 client1 = client;
             }
-            else
+            else if(connectedClients == 2)
             {
                 client2 = client;
+            } else 
+            {
+                // We already have two players, so close the connection
+                client.Close();
             }
-            waitHandle.Set();
+            waitHandle.Set(); 
+
+            // If one of the clients disconnected, wait for another player to connect before resuming the game
+            if (connectedClients < 2)
+            {
+                System.Console.WriteLine("Waiting for another player to connect...");
+                return;
+            }
+
         }
 
-        // Send Data to Clients
-        static void SendData(TcpClient client, GameData ClientData)
+
+
+        // Send GameData to Clients
+        static void SendGameData(TcpClient client, GameData ClientData)
         {
             // Get a network stream object for reading and writing data
             NetworkStream stream = client.GetStream();
@@ -231,8 +276,8 @@ namespace GameServer
                 coordinates = ParseCoords(clientRow,clientCol);
                 if(!game.IsMoveValid(coordinates))
                 {
-                    ClientData = new GameData(false,game.GetState(),game.IsFull(),game.GetBoard(),true, game.GetPlayer1Score(),game.GetPlayer2Score());
-                    SendData(client,ClientData);
+                    ClientData = new GameData(false,game.GetState(),game.IsFull(),game.GetBoard(),true, game.GetPlayer1Score(),game.GetPlayer2Score(),true);
+                    SendGameData(client,ClientData);
                 }
                 
             } while (!game.IsMoveValid(coordinates));
