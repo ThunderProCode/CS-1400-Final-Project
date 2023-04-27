@@ -40,42 +40,45 @@ namespace GameClient
             IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
             int port = 8080;
 
-            do
+            
+            try
             {
-                try
-                {
-                    // Create a TCP/IP socket for the client
-                    TcpClient client = new TcpClient();
-                    client.Connect(ipAddress,port);
-                    System.Console.WriteLine("Connected to server.");
-                    System.Console.WriteLine("Waiting for Player 2....");
-                    HandleGame(client);
+                // Create a TCP/IP socket for the client
+                TcpClient server = new TcpClient();
+                server.Connect(ipAddress,port);
+                System.Console.WriteLine("Connected to server.");
+                System.Console.WriteLine("Waiting for Player 2....");
 
-                    if(ReceiveString(client) == "NOTPLAYINGAGAIN")
+                do
+                {
+                    HandleGame(server);
+
+                    if(ReceiveString(server) == "NOTPLAYINGAGAIN")
                     {
                         PlayAgain = false;
                     } else {
+                        System.Console.WriteLine("PLAYERS ARE PLAYING AGAIN");
                         PlayAgain = true;
                     }
-                }
-                catch (SocketException)
-                {
-                    System.Console.WriteLine("Make sure the server is running before you run the client");
-                    break;
-                }
-                catch (IOException)
-                {
-                    System.Console.WriteLine("Player 2 disconnected, He was afraid of you!");
-                    break;
-                }
-            } while (PlayAgain);
+                } while (PlayAgain);
+
+            }
+            catch (SocketException)
+            {
+                System.Console.WriteLine("Make sure the server is running before you run the client");
+            }
+            catch (IOException)
+            {
+                System.Console.WriteLine("Player 2 disconnected, He was afraid of you!");
+            }
+            
         }
 
         // Handle game logic
-        private static void HandleGame(TcpClient client)
+        private static void HandleGame(TcpClient server)
         {
             // Get a network stream object for reading and writing data
-            NetworkStream stream = client.GetStream();
+            NetworkStream stream = server.GetStream();
 
             bool Draw = false;
             bool IsYourTurn = false;
@@ -87,7 +90,7 @@ namespace GameClient
                 int bytesRead = stream.Read(buffer, 0, buffer.Length);
                 string data = Encoding.ASCII.GetString(buffer, 0, bytesRead);
 
-                if(data != null && data.Length > 0)
+                if(data != null && data != "NOTVALIDMOVEMENT")
                 {
                     GameData gameData = JsonSerializer.Deserialize<GameData>(data);
 
@@ -131,27 +134,33 @@ namespace GameClient
                             PlayerDisconnected = true;
                             break;
                         }       
-                    }
+                    } 
+                } else 
+                {
+                    System.Console.WriteLine("That was not a valid movement!");
+                    SendData(stream);
+                    continue;
                 }
             }
 
             if(!PlayerDisconnected)
             {
-                PrintFinalMessage(Draw, IsYourTurn);
-                AskPlayAgain(client);
+                PrintFinalMessage(Draw, IsYourTurn, server);
+                AskPlayAgain(server);
             } else 
             {
                 PlayAgain = false;
                 System.Console.WriteLine("Player 2 disconnected, He was afraid of you!");
             }
-            // stream.Close();
         }
 
+        // Prints the global score
         private static void PrintScores(int MyScore, int Score2)
         {
             System.Console.WriteLine($"Your Score: {MyScore} - Player 2: {Score2}");
             System.Console.WriteLine();
         }
+
         // Receive Strings from server
         private static string ReceiveString(TcpClient client)
         {
@@ -208,7 +217,7 @@ namespace GameClient
         }
 
         // Print message at the end of a game
-        private static void PrintFinalMessage(bool Draw, bool IsYourTurn)
+        private static void PrintFinalMessage(bool Draw, bool IsYourTurn, TcpClient server)
         {
             if(Draw)
             {
@@ -217,12 +226,23 @@ namespace GameClient
             {
                 if(IsYourTurn)
                 {
+                    SendMessage(server,"WINNER");
                     System.Console.WriteLine("You Won!");
                 } else
                 {
+                    SendMessage(server,"NOTWINNER");
                     System.Console.WriteLine("Player 2 Won");
                 }
             }
+        }
+
+        private static void SendMessage(TcpClient server, string message)
+        {
+            NetworkStream stream =  server.GetStream();
+            // Send message to server
+            byte[] messageData = Encoding.ASCII.GetBytes(message);
+            stream.Write(messageData, 0, messageData.Length);
+            stream.Flush();
         }
 
         // Ask user to input coordinates and send them to server

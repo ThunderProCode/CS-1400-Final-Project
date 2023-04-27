@@ -12,7 +12,7 @@ namespace GameServer
         public bool PlayersConnected {get; set; }
         public bool BothPlayingAgain { get; set; }
 
-        public GameData(bool validPreviousMovement,bool gameState,bool isFull, char[][] gameBoard,bool yourTurn,int player2Score, int myScore, bool playersConnected, bool bothPlayingAgain)
+        public GameData(bool validPreviousMovement,bool gameState,bool isFull, char[][] gameBoard,bool yourTurn,int myScore, int player2Score, bool playersConnected, bool bothPlayingAgain)
         {
             ValidPreviousMovement = validPreviousMovement;
             GameState = gameState;
@@ -71,5 +71,16 @@ namespace GameServer
         {
             this.YourTurn = NewYourTurn;
         }
+
+        public void SetMyScore(int newScore)
+        {
+            this.MyScore = newScore;
+        }
+        
+        public void SetPlayer2Score(int newScore)
+        {
+            this.Player2Score = newScore;
+        }
+
     }
 }

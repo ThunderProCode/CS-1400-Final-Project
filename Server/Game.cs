@@ -13,8 +13,6 @@ namespace GameServer
         private int turn = 1;
         // State means - True game running - False game stopped because someone won or left
         private bool state = false;
-        private int Player1Score = 0;
-        private int Player2Score = 0;
         public Game(char player1,char player2)
         {
             Random rnd = new Random();
@@ -42,37 +40,6 @@ namespace GameServer
             {
                 this.turn = 1;
             }
-        }
-
-        // Set Both player scores to 0
-        public void ResetPlayerScores()
-        {
-            this.Player1Score = 0;
-            this.Player2Score = 0;
-        }
-
-        // Get Player 1 Score
-        public int GetPlayer1Score()
-        {
-            return this.Player1Score;
-        }
-
-        // Set Player 2 Score
-        public void SetPlayer1Score(int newScore)
-        {
-            this.Player1Score = newScore;
-        }
-
-        // Get Player 1 Score
-        public int GetPlayer2Score()
-        {
-            return this.Player2Score;
-        }
-
-        // Set Player 2 Score
-        public void SetPlayer2Score(int newScore)
-        {
-            this.Player2Score = newScore;
         }
 
         // Get the current player turn

@@ -19,13 +19,14 @@ namespace GameServer
         static Game game;
         static GameData Client1Data;
         static GameData Client2Data;
-
+        static int Player1Score = 0;
+        static int Player2Score = 0;
         static void Main(string[] args){
 
             // Start a new game
             game = new Game('X','O');
 
-            bool PlayAgain = true;
+            bool PlayAgain = false;
 
             // Create a TCP/IP socket for the server
             listener = new TcpListener(ipAddress,port);
@@ -39,26 +40,29 @@ namespace GameServer
                 } else
                 {
                     game.Reset();
-                    game.ResetPlayerScores();
+                    Player1Score = 0;
+                    Player2Score = 0;
                 }
 
-                // Intialize initial game data
-                Client1Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,game.GetPlayer1Score(),game.GetPlayer2Score(),true,true);
-                Client2Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,game.GetPlayer2Score(),game.GetPlayer1Score(),true,true);
-                PlayAgain = true;
+                System.Console.WriteLine($"PRIMERO Player 1: {Player1Score} - Player 2: {Player2Score}");
 
                 try
                 {
-                    System.Console.WriteLine("Waiting for players to connect...");
-
-                    while(connectedClients < 2)
+                    if(!PlayAgain)
                     {
-                        waitHandle.Reset();
-                        listener.BeginAcceptTcpClient(new AsyncCallback(HandleClientConnection), listener);
-                        waitHandle.WaitOne();
+                        System.Console.WriteLine("Waiting for players to connect...");
+                        while(connectedClients < 2)
+                        {
+                            waitHandle.Reset();
+                            listener.BeginAcceptTcpClient(new AsyncCallback(HandleClientConnection), listener);
+                            waitHandle.WaitOne();
+                        }
+                        System.Console.WriteLine("Two players connected");
                     }
 
-                    System.Console.WriteLine("Two players connected");
+                    // Intialize initial game data
+                    Client1Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,Player1Score,Player2Score,true,true);
+                    Client2Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,Player2Score,Player1Score,true,true);
 
                     while(true)
                     {
@@ -92,17 +96,20 @@ namespace GameServer
                         }
                     }
 
-                    PrintWinner();
-
                     // Send Final Data to Clients
                     Client1Data.SetGameState(false);
                     Client2Data.SetGameState(false);
                     SendGameData(client1,Client1Data);
                     SendGameData(client2,Client2Data);
                     System.Console.WriteLine("Data Sent");
+
+                    PrintWinner();
                     
-                    string response1 = ReceiveString(client1);
+                    string response1 = ReceiveString(client1); 
+                    System.Console.WriteLine("SEXO:"+response1);
                     string response2 = ReceiveString(client2);
+                    System.Console.WriteLine("SEXO:"+response2);
+                    
 
                     if(response1.ToUpper() == "Y" && response2.ToUpper() == "Y")
                     {
@@ -133,15 +140,19 @@ namespace GameServer
         // Prints the game winner and adds up to their score
         static void PrintWinner()
         {
-            if(game.getTurn() == 2){
-                game.SetPlayer1Score(game.GetPlayer1Score() + 1);
-                System.Console.WriteLine($"{client1.Client.RemoteEndPoint.ToString()} won!");
-            } else 
+            string response1 = ReceiveString(client1);
+            System.Console.WriteLine("PrintWinner1"+response1);
+            string response2 = ReceiveString(client2);
+            System.Console.WriteLine("PrintWinner2"+response2);
+
+            if(response1 == "WINNER")
             {
-                game.SetPlayer2Score(game.GetPlayer2Score() + 1);
-                System.Console.WriteLine($"{client1.Client.RemoteEndPoint.ToString()} won!");
+                Player1Score++;
+            } else if(response2 == "WINNER")
+            {
+                Player2Score++;
             }
-            System.Console.WriteLine($"Player 1: {game.GetPlayer1Score()} - Player 2: {game.GetPlayer2Score()}");
+            System.Console.WriteLine($"Player 1: {Player1Score} - Player 2: {Player2Score}");
         }
 
         // Executes the game logic
@@ -292,8 +303,8 @@ namespace GameServer
                 coordinates = ParseCoords(clientRow,clientCol);
                 if(!game.IsMoveValid(coordinates))
                 {
-                    ClientData = new GameData(false,game.GetState(),game.IsFull(),game.GetBoard(),true, game.GetPlayer1Score(),game.GetPlayer2Score(),true,true);
-                    SendGameData(client,ClientData);
+                    SendMessage(client,"NOTVALIDMOVEMENT");
+                    System.Console.WriteLine("SE MANDO SEXO");
                 }
                 
             } while (!game.IsMoveValid(coordinates));

@@ -72,9 +72,15 @@ namespace GameClient
             this.YourTurn = NewYourTurn;
         }
 
-        public bool GetBothPlayingAgain()
+        public void SetMyScore(int newScore)
         {
-            return this.BothPlayingAgain;
+            this.MyScore = newScore;
         }
+        
+        public void SetPlayer2Score(int newScore)
+        {
+            this.Player2Score = newScore;
+        }
+
     }
 }
