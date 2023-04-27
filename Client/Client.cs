@@ -41,7 +41,7 @@ namespace GameClient
             int port = 8080;
 
             do
-            { 
+            {
                 try
                 {
                     // Create a TCP/IP socket for the client
@@ -50,6 +50,13 @@ namespace GameClient
                     System.Console.WriteLine("Connected to server.");
                     System.Console.WriteLine("Waiting for Player 2....");
                     HandleGame(client);
+
+                    if(ReceiveString(client) == "NOTPLAYINGAGAIN")
+                    {
+                        PlayAgain = false;
+                    } else {
+                        PlayAgain = true;
+                    }
                 }
                 catch (SocketException)
                 {
@@ -122,7 +129,6 @@ namespace GameClient
                         } else 
                         {
                             PlayerDisconnected = true;
-                            PlayAgain = false;
                             break;
                         }       
                     }
@@ -135,15 +141,29 @@ namespace GameClient
                 AskPlayAgain(client);
             } else 
             {
+                PlayAgain = false;
                 System.Console.WriteLine("Player 2 disconnected, He was afraid of you!");
             }
-            stream.Close();
+            // stream.Close();
         }
 
         private static void PrintScores(int MyScore, int Score2)
         {
             System.Console.WriteLine($"Your Score: {MyScore} - Player 2: {Score2}");
             System.Console.WriteLine();
+        }
+        // Receive Strings from server
+        private static string ReceiveString(TcpClient client)
+        {
+            // Get a network stream object for reading and writing data
+            NetworkStream stream = client.GetStream();
+
+            // Receive string from server
+            byte[] buffer = new byte[1024];
+            int bytesRead = stream.Read(buffer, 0, buffer.Length);
+            string data = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+            if(data.Length > 0) return data;
+            return "NODATA";
         }
 
         // Print the main menu and ask user for input

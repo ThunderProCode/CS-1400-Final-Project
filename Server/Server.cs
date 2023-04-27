@@ -33,11 +33,19 @@ namespace GameServer
 
             do
             {
-                game.Reset();
+                if(PlayAgain)
+                {
+                    game.Reset();
+                } else
+                {
+                    game.Reset();
+                    game.ResetPlayerScores();
+                }
 
                 // Intialize initial game data
-                Client1Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,game.GetPlayer1Score(),game.GetPlayer2Score(),true);
-                Client2Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,game.GetPlayer2Score(),game.GetPlayer1Score(),true);
+                Client1Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,game.GetPlayer1Score(),game.GetPlayer2Score(),true,true);
+                Client2Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,game.GetPlayer2Score(),game.GetPlayer1Score(),true,true);
+                PlayAgain = true;
 
                 try
                 {
@@ -54,7 +62,7 @@ namespace GameServer
 
                     while(true)
                     {
-                        GameData PlayerDisconnectedData = new GameData(false,false,true,game.GetBoard(),false,0,0,false);
+                        GameData PlayerDisconnectedData = new GameData(false,false,true,game.GetBoard(),false,0,0,false,false);
 
                         // Check if either player has disconnected
                         if(!client1.Connected)
@@ -63,6 +71,7 @@ namespace GameServer
                             connectedClients = 0;
                             SendGameData(client2,PlayerDisconnectedData);
                             client2.Close();
+                            PlayAgain = false;
                             break;
                         } else if(!client2.Connected)
                         {
@@ -70,6 +79,7 @@ namespace GameServer
                             connectedClients = 0;
                             SendGameData(client1,PlayerDisconnectedData);
                             client1.Close();
+                            PlayAgain = false;
                             break;
                         }
 
@@ -82,7 +92,6 @@ namespace GameServer
                         }
                     }
 
-                    
                     PrintWinner();
 
                     // Send Final Data to Clients
@@ -97,11 +106,16 @@ namespace GameServer
 
                     if(response1.ToUpper() == "Y" && response2.ToUpper() == "Y")
                     {
+                        PlayAgain = true;
                         System.Console.WriteLine("Players are playing again! ");
+                        SendMessage(client1,"PLAYINGAGAIN");
+                        SendMessage(client2,"PLAYINGAGAIN");
                     }
                     else
                     {
                         PlayAgain = false;
+                        SendMessage(client1,"NOTPLAYINGAGAIN");
+                        SendMessage(client2,"NOTPLAYINGAGAIN");
                         System.Console.WriteLine("Not playing again");
                     }
 
@@ -113,15 +127,7 @@ namespace GameServer
                     System.Console.WriteLine(e.Message);
                 }
 
-            } while (PlayAgain);
-
-            // Stop listening for incoming connections
-            listener.Stop();
-
-            // Close clients connections
-            client1.Close();
-            client2.Close();
-
+            } while (true);
         }
 
         // Prints the game winner and adds up to their score
@@ -239,7 +245,17 @@ namespace GameServer
 
         }
 
+        // Send String to clients
+        static void SendMessage(TcpClient client,string message)
+        {
+            // Get a network stream object for reading and writing data
+            NetworkStream stream = client.GetStream();
 
+            // Send game data to client
+            byte[] currentBytes = Encoding.ASCII.GetBytes(message);
+            stream.Write(currentBytes,0,currentBytes.Length);
+            stream.Flush();
+        }
 
         // Send GameData to Clients
         static void SendGameData(TcpClient client, GameData ClientData)
@@ -276,7 +292,7 @@ namespace GameServer
                 coordinates = ParseCoords(clientRow,clientCol);
                 if(!game.IsMoveValid(coordinates))
                 {
-                    ClientData = new GameData(false,game.GetState(),game.IsFull(),game.GetBoard(),true, game.GetPlayer1Score(),game.GetPlayer2Score(),true);
+                    ClientData = new GameData(false,game.GetState(),game.IsFull(),game.GetBoard(),true, game.GetPlayer1Score(),game.GetPlayer2Score(),true,true);
                     SendGameData(client,ClientData);
                 }
                 

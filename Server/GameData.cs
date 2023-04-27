@@ -2,16 +2,17 @@ namespace GameServer
 {
     class GameData
     {
-        public bool ValidPreviousMovement {get; set; }
-        public bool GameState {get; set; }
-        public bool IsFull {get; set; }
-        public char[][] GameBoard {get; set; }
-        public bool YourTurn {get; set; }
-        public int MyScore {get; set; }
+        public bool ValidPreviousMovement { get; set; }
+        public bool GameState { get; set; }
+        public bool IsFull { get; set; }
+        public char[][] GameBoard { get; set; }
+        public bool YourTurn { get; set; }
+        public int MyScore { get; set; }
         public int Player2Score {get; set; }
         public bool PlayersConnected {get; set; }
+        public bool BothPlayingAgain { get; set; }
 
-        public GameData(bool validPreviousMovement,bool gameState,bool isFull, char[][] gameBoard,bool yourTurn,int player2Score, int myScore, bool playersConnected)
+        public GameData(bool validPreviousMovement,bool gameState,bool isFull, char[][] gameBoard,bool yourTurn,int player2Score, int myScore, bool playersConnected, bool bothPlayingAgain)
         {
             ValidPreviousMovement = validPreviousMovement;
             GameState = gameState;
@@ -21,6 +22,7 @@ namespace GameServer
             Player2Score = player2Score;
             MyScore = myScore;
             PlayersConnected = playersConnected;
+            BothPlayingAgain = bothPlayingAgain;
         }
 
         public int GetMyScore()

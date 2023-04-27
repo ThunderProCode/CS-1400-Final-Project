@@ -44,6 +44,13 @@ namespace GameServer
             }
         }
 
+        // Set Both player scores to 0
+        public void ResetPlayerScores()
+        {
+            this.Player1Score = 0;
+            this.Player2Score = 0;
+        }
+
         // Get Player 1 Score
         public int GetPlayer1Score()
         {
