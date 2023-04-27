@@ -52,13 +52,18 @@ namespace GameClient
                 do
                 {
                     HandleGame(server);
-
-                    if(ReceiveString(server) == "NOTPLAYINGAGAIN")
+                    String ServerResponse = ReceiveString(server);
+                    if(ServerResponse == "NOTPLAYINGAGAIN")
                     {
                         PlayAgain = false;
-                    } else {
+                    } else if(ServerResponse == "PLAYINGAGAIN")
+                    {
                         System.Console.WriteLine("PLAYERS ARE PLAYING AGAIN");
                         PlayAgain = true;
+                    } else 
+                    {
+                        System.Console.WriteLine($"Server Response: {ServerResponse}");
+                        break;
                     }
                 } while (PlayAgain);
 
@@ -180,10 +185,12 @@ namespace GameClient
         {
             System.Console.WriteLine("====MENU====\n1)Play\n2)Exit\nType an option:");
             string input = Console.ReadLine();
-            bool correctInput = Int32.TryParse(input,out int option);
+            int option;
+            bool correctInput = Int32.TryParse(input,out option);
             while(!correctInput){
                 System.Console.WriteLine("Please type a correct option: ");
                 input = Console.ReadLine();
+                correctInput = Int32.TryParse(input,out option);
             }
             return option;
         }
@@ -222,6 +229,7 @@ namespace GameClient
             if(Draw)
             {
                 System.Console.WriteLine("Its a tie, no one Won");
+                SendMessage(server,"NOWINNER");
             } else 
             {
                 if(IsYourTurn)

@@ -19,8 +19,6 @@ namespace GameServer
         static Game game;
         static GameData Client1Data;
         static GameData Client2Data;
-        static int Player1Score = 0;
-        static int Player2Score = 0;
         static void Main(string[] args){
 
             // Start a new game
@@ -40,11 +38,8 @@ namespace GameServer
                 } else
                 {
                     game.Reset();
-                    Player1Score = 0;
-                    Player2Score = 0;
+                    game.ResetPlayerScores();
                 }
-
-                System.Console.WriteLine($"PRIMERO Player 1: {Player1Score} - Player 2: {Player2Score}");
 
                 try
                 {
@@ -61,28 +56,20 @@ namespace GameServer
                     }
 
                     // Intialize initial game data
-                    Client1Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,Player1Score,Player2Score,true,true);
-                    Client2Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,Player2Score,Player1Score,true,true);
+                    Client1Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,game.GetPlayer1Score(),game.GetPlayer2Score(),true,true);
+                    Client2Data = new GameData(true,game.GetState(),game.IsFull(),game.GetBoard(),false,game.GetPlayer2Score(),game.GetPlayer1Score(),true,true);
 
                     while(true)
                     {
-                        GameData PlayerDisconnectedData = new GameData(false,false,true,game.GetBoard(),false,0,0,false,false);
-
                         // Check if either player has disconnected
                         if(!client1.Connected)
                         {
-                            System.Console.WriteLine("Player 1 has disconnected, Game has ended");
-                            connectedClients = 0;
-                            SendGameData(client2,PlayerDisconnectedData);
-                            client2.Close();
+                            HandleClientDisconnection(client2);
                             PlayAgain = false;
                             break;
                         } else if(!client2.Connected)
                         {
-                            System.Console.WriteLine("Player 2 has disconnected, Game has ended");
-                            connectedClients = 0;
-                            SendGameData(client1,PlayerDisconnectedData);
-                            client1.Close();
+                            HandleClientDisconnection(client1);
                             PlayAgain = false;
                             break;
                         }
@@ -90,10 +77,7 @@ namespace GameServer
                         RunGame();
 
                         // If the game has ended, break out of the loop
-                        if(!game.GetState())
-                        {
-                            break;
-                        }
+                        if(!game.GetState()) break;
                     }
 
                     // Send Final Data to Clients
@@ -106,10 +90,9 @@ namespace GameServer
                     PrintWinner();
                     
                     string response1 = ReceiveString(client1); 
-                    System.Console.WriteLine("SEXO:"+response1);
-                    string response2 = ReceiveString(client2);
-                    System.Console.WriteLine("SEXO:"+response2);
-                    
+                    string response2 = ReceiveString(client2);                    
+                    System.Console.WriteLine("RESPONSE 1: "+response1);
+                    System.Console.WriteLine("RESPONSE 2: "+response2);
 
                     if(response1.ToUpper() == "Y" && response2.ToUpper() == "Y")
                     {
@@ -137,27 +120,44 @@ namespace GameServer
             } while (true);
         }
 
+        // Handle Disconnection
+        static void HandleClientDisconnection(TcpClient client)
+        {
+            GameData PlayerDisconnectedData = new GameData(false,false,true,game.GetBoard(),false,0,0,false,false);
+            System.Console.WriteLine($"Player {client.Client.RemoteEndPoint.ToString()} has disconnected, Game has ended");
+            connectedClients = 0;
+            SendGameData(client,PlayerDisconnectedData);
+            client.Close();
+        }
+
         // Prints the game winner and adds up to their score
         static void PrintWinner()
         {
             string response1 = ReceiveString(client1);
-            System.Console.WriteLine("PrintWinner1"+response1);
             string response2 = ReceiveString(client2);
-            System.Console.WriteLine("PrintWinner2"+response2);
 
             if(response1 == "WINNER")
             {
-                Player1Score++;
+                game.SetPlayer1Score(game.GetPlayer1Score() + 1);
             } else if(response2 == "WINNER")
             {
-                Player2Score++;
+                game.SetPlayer2Score(game.GetPlayer2Score() + 1);
             }
-            System.Console.WriteLine($"Player 1: {Player1Score} - Player 2: {Player2Score}");
+            System.Console.WriteLine($"Player 1: {game.GetPlayer1Score()} - Player 2: {game.GetPlayer2Score()}");
         }
 
         // Executes the game logic
         static void RunGame()
         {
+              // If the board is full, means its a tie
+            if(game.IsFull()) 
+            {
+                Client1Data.SetIsFull(true);
+                Client2Data.SetIsFull(true);
+                game.SetState(false);
+                return;
+            }
+
             int[] coordinates = new int[]{};
             char player = ' ';
 
@@ -202,8 +202,6 @@ namespace GameServer
                     coordinates = ReceiveData(client2,Client2Data);
                 break;
             }
-            // If the board is full, means its a tie
-            if(game.IsFull()) game.SetState(false);
 
             if(game.GetState()){
                 game.Move(coordinates,player);
@@ -221,7 +219,6 @@ namespace GameServer
             byte[] buffer = new byte[1024];
             int bytes = stream.Read(buffer, 0, buffer.Length);
             string data = Encoding.ASCII.GetString(buffer, 0, bytes);
-            System.Console.WriteLine(data);
             return data.Trim();
         }
 
@@ -304,7 +301,6 @@ namespace GameServer
                 if(!game.IsMoveValid(coordinates))
                 {
                     SendMessage(client,"NOTVALIDMOVEMENT");
-                    System.Console.WriteLine("SE MANDO SEXO");
                 }
                 
             } while (!game.IsMoveValid(coordinates));
