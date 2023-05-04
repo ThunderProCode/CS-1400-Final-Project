@@ -225,7 +225,6 @@ namespace GameServer
         // Handle Incoming Connections to server
         static void HandleClientConnection(IAsyncResult result)
         {
-            
             TcpListener listener = (TcpListener)result.AsyncState;
             TcpClient client = listener.EndAcceptTcpClient(result);
             Interlocked.Increment(ref connectedClients);
